@@ -5,6 +5,12 @@ and intends to use [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Documentation
+
+- Expanded installation, verification, rollback, and uninstall guidance for
+  Linux native/server, Docker, Docker Compose, Windows, macOS, and other
+  supported deployment environments.
+
 ## 1.2.0 - 2026-08-18 (enterprise candidate)
 
 The 1.2.0 release is a controlled pilot candidate, not an enterprise
