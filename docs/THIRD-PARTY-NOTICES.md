@@ -1,6 +1,6 @@
 # Third-party notices
 
-This file records direct dependencies declared by the project as of the 1.2.0
+This file records direct dependencies declared by the project as of the 1.2.1
 enterprise-candidate work. It is not a substitute for the machine-generated,
 transitive SBOM and license review required for an enterprise release.
 

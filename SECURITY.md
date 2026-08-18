@@ -2,9 +2,9 @@
 
 ## Supported status
 
-Version 1.1.1 is the currently documented deployed version. Version 1.2.0 is
-an enterprise candidate intended for controlled pilot use; it is not approved
-for enterprise general availability until every mandatory gate in
+Version 1.2.1 is the currently documented deployed candidate. It is intended
+for controlled pilot use and is not approved for enterprise general
+availability until every mandatory gate in
 [`docs/ENTERPRISE-READINESS.md`](docs/ENTERPRISE-READINESS.md) is closed with
 recorded evidence.
 

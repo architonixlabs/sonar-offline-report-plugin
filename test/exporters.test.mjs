@@ -84,6 +84,11 @@ test("print-ready HTML discloses exact mode, scope, count, report ID and complet
   assert.match(html, /1 exported \/ 2 collected/);
   assert.match(html, /11111111-2222-4333-8444-555555555555/);
   assert.match(html, /Complete for selected collection scope/);
+  assert.match(html, /id="print-now"/);
+  assert.match(html, /choose <strong>Save as PDF<\/strong>/);
+  assert.match(html, /@media print\{\.print-toolbar\{display:none!important\}\}/);
+  assert.match(app.REPORT_RUNTIME, /setupPrintView/);
+  assert.match(app.REPORT_RUNTIME, /globalThis\.print\(\)/);
 });
 
 test("excluded datasets are labeled not collected instead of zero", async () => {

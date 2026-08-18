@@ -19,7 +19,10 @@ test("plugin page provides a viewport scrollbar, bottom clearance, and a guided 
   assert.match(markup, /Offline HTML/);
   assert.match(markup, /Excel/);
   assert.match(markup, /Word/);
-  assert.match(markup, /Print \/ Save as PDF/);
+  assert.match(markup, /<strong>PDF<\/strong>/);
+  assert.match(markup, /Opens a print-ready view; choose Save as PDF/);
+  assert.match(source, /print-ready HTML file was downloaded/);
+  assert.doesNotMatch(source, /printWindow\.print\(\)/);
   assert.match(markup, /<summary>Data-only formats<\/summary>/);
   assert.match(markup, /Advanced data and appearance/);
   assert.match(markup, /aria-label="Report creation progress"/);

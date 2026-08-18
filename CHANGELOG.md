@@ -5,6 +5,17 @@ and intends to use [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## 1.2.1 - 2026-08-18 (enterprise candidate)
+
+### Fixed
+
+- Replaced the fragile fixed-delay PDF print trigger with a load-driven print
+  view that opens its own browser print dialog.
+- Added a visible **Print / Save as PDF** retry control inside the print view.
+- Added a downloadable print-ready HTML fallback when the browser blocks the
+  popup, so report collection is not lost.
+- Clarified PDF status messages and format wording in the plugin page.
+
 ### Documentation
 
 - Expanded installation, verification, rollback, and uninstall guidance for

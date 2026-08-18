@@ -2,7 +2,7 @@
 
 A thin, project-scoped SonarQube Community Build plugin that collects authorized project data through public Web APIs and creates portable reports entirely in the browser. It does not access the SonarQube database, store reports on the server, or use a privileged service token.
 
-Version `1.2.0` is validated as an **enterprise candidate/pilot** on SonarQube Community Build `26.6.0.123539`. It is not enterprise GA until the open authorization, HTTPS, browser/Office, large-data, accessibility, rollback, signing, and SBOM gates in [Enterprise readiness](docs/ENTERPRISE-READINESS.md) are closed.
+Version `1.2.1` is validated as an **enterprise candidate/pilot** on SonarQube Community Build `26.6.0.123539`. It is not enterprise GA until the open authorization, HTTPS, browser/Office, large-data, accessibility, rollback, signing, and SBOM gates in [Enterprise readiness](docs/ENTERPRISE-READINESS.md) are closed.
 
 ## What it exports
 
@@ -59,7 +59,7 @@ mvn clean verify
 The release artifact is:
 
 ```text
-target/sonar-offline-report-plugin-1.2.0.jar
+target/sonar-offline-report-plugin-1.2.1.jar
 ```
 
 The build derives the browser-visible plugin version from `pom.xml`, verifies the matching package version, and fails when the committed static bundle is stale.
@@ -68,8 +68,8 @@ The build derives the browser-visible plugin version from `pom.xml`, verifies th
 
 This is a third-party plugin and is not installed from the SonarQube Marketplace. A SonarQube administrator must acknowledge the third-party-plugin risk when prompted. The same installation rules apply to a new install, an upgrade, and a reinstall:
 
-1. Confirm the SonarQube version is supported. Version `1.2.0` is validated against Community Build `26.6.0.123539` and Plugin API `13.7.0.4381`; do not assume compatibility with another Plugin API major version.
-2. Download both the JAR and its `.sha256` file from the [v1.2.0 release](https://github.com/architonixlabs/sonar-offline-report-plugin/releases/tag/v1.2.0).
+1. Confirm the SonarQube version is supported. Version `1.2.1` is validated against Community Build `26.6.0.123539` and Plugin API `13.7.0.4381`; do not assume compatibility with another Plugin API major version.
+2. Download both the JAR and its `.sha256` file from the [v1.2.1 release](https://github.com/architonixlabs/sonar-offline-report-plugin/releases/tag/v1.2.1).
 3. Verify the checksum before copying the JAR to a server.
 4. Back up and remove every older `sonar-offline-report-plugin-*.jar`. Only one JAR with the `offlinereport` plugin key may be present.
 5. Put the JAR in `<sonarqubeHome>/extensions/plugins`, or in the persistent Docker volume mounted at `/opt/sonarqube/extensions`.
@@ -83,7 +83,7 @@ For a current ZIP installation, first confirm the supported Java version in the 
 Linux:
 
 ```bash
-PLUGIN_VERSION=1.2.0
+PLUGIN_VERSION=1.2.1
 RELEASE_URL="https://github.com/architonixlabs/sonar-offline-report-plugin/releases/download/v${PLUGIN_VERSION}"
 
 curl -fLO "${RELEASE_URL}/sonar-offline-report-plugin-${PLUGIN_VERSION}.jar"
@@ -94,13 +94,13 @@ sha256sum -c "sonar-offline-report-plugin-${PLUGIN_VERSION}.jar.sha256"
 macOS uses `shasum` instead of `sha256sum`:
 
 ```bash
-shasum -a 256 -c sonar-offline-report-plugin-1.2.0.jar.sha256
+shasum -a 256 -c sonar-offline-report-plugin-1.2.1.jar.sha256
 ```
 
 Windows PowerShell:
 
 ```powershell
-$Version = "1.2.0"
+$Version = "1.2.1"
 $ReleaseUrl = "https://github.com/architonixlabs/sonar-offline-report-plugin/releases/download/v$Version"
 $Jar = "sonar-offline-report-plugin-$Version.jar"
 $Checksum = "$Jar.sha256"
@@ -126,7 +126,7 @@ Adjust those values for the server before running the commands.
 
 ```bash
 export SONARQUBE_HOME=/opt/sonarqube
-export PLUGIN_JAR="$PWD/sonar-offline-report-plugin-1.2.0.jar"
+export PLUGIN_JAR="$PWD/sonar-offline-report-plugin-1.2.1.jar"
 export PLUGIN_DIR="$SONARQUBE_HOME/extensions/plugins"
 export PLUGIN_BACKUP="/var/backups/sonarqube-plugins/$(date -u +%Y%m%d-%H%M%S)"
 
@@ -147,7 +147,7 @@ sudo find "$PLUGIN_DIR" -maxdepth 1 -type f \
 sudo find "$PLUGIN_DIR" -maxdepth 1 -type f \
   -name 'sonar-offline-report-plugin-*.jar' -delete
 sudo install -o sonarqube -g sonarqube -m 0644 \
-  "$PLUGIN_JAR" "$PLUGIN_DIR/sonar-offline-report-plugin-1.2.0.jar"
+  "$PLUGIN_JAR" "$PLUGIN_DIR/sonar-offline-report-plugin-1.2.1.jar"
 
 sudo systemctl start sonarqube.service
 sudo systemctl status sonarqube.service --no-pager
@@ -173,7 +173,7 @@ Assuming the container is named `sonarqube`:
 
 ```bash
 CONTAINER=sonarqube
-PLUGIN_JAR="$PWD/sonar-offline-report-plugin-1.2.0.jar"
+PLUGIN_JAR="$PWD/sonar-offline-report-plugin-1.2.1.jar"
 BACKUP_DIR="$PWD/sonarqube-plugin-backup-$(date -u +%Y%m%d-%H%M%S)"
 
 # Confirm the container and persistent extensions mount.
@@ -192,7 +192,7 @@ done
 docker exec "$CONTAINER" sh -c \
   'rm -f "$SONARQUBE_HOME"/extensions/plugins/sonar-offline-report-plugin-*.jar'
 docker cp "$PLUGIN_JAR" \
-  "$CONTAINER:/opt/sonarqube/extensions/plugins/sonar-offline-report-plugin-1.2.0.jar"
+  "$CONTAINER:/opt/sonarqube/extensions/plugins/sonar-offline-report-plugin-1.2.1.jar"
 
 docker restart "$CONTAINER"
 docker logs --tail 200 "$CONTAINER"
@@ -243,8 +243,8 @@ done
 
 docker compose exec -T sonarqube sh -c \
   'rm -f "$SONARQUBE_HOME"/extensions/plugins/sonar-offline-report-plugin-*.jar'
-docker compose cp sonar-offline-report-plugin-1.2.0.jar \
-  sonarqube:/opt/sonarqube/extensions/plugins/sonar-offline-report-plugin-1.2.0.jar
+docker compose cp sonar-offline-report-plugin-1.2.1.jar \
+  sonarqube:/opt/sonarqube/extensions/plugins/sonar-offline-report-plugin-1.2.1.jar
 
 docker compose restart sonarqube
 docker compose logs --tail 200 sonarqube
@@ -259,7 +259,7 @@ The supported Windows distribution is x64. Run the following in an elevated Powe
 ```powershell
 $SonarHome = "C:\sonarqube"
 $PluginDir = Join-Path $SonarHome "extensions\plugins"
-$Jar = (Resolve-Path ".\sonar-offline-report-plugin-1.2.0.jar").Path
+$Jar = (Resolve-Path ".\sonar-offline-report-plugin-1.2.1.jar").Path
 $BackupDir = Join-Path "C:\sonarqube-backups\plugins" (Get-Date -Format "yyyyMMdd-HHmmss")
 $ServiceScript = Join-Path $SonarHome "bin\windows-x86-64\SonarService.bat"
 
@@ -274,7 +274,7 @@ $Existing | Select-Object FullName, Length, LastWriteTime
 New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
 $Existing | Copy-Item -Destination $BackupDir
 $Existing | Remove-Item -Force
-Copy-Item -LiteralPath $Jar -Destination (Join-Path $PluginDir "sonar-offline-report-plugin-1.2.0.jar")
+Copy-Item -LiteralPath $Jar -Destination (Join-Path $PluginDir "sonar-offline-report-plugin-1.2.1.jar")
 
 & $ServiceScript start
 & $ServiceScript status
@@ -305,7 +305,7 @@ find "$PLUGIN_DIR" -maxdepth 1 -type f \
   -exec cp -p '{}' "$BACKUP_DIR/" \;
 find "$PLUGIN_DIR" -maxdepth 1 -type f \
   -name 'sonar-offline-report-plugin-*.jar' -delete
-install -m 0644 sonar-offline-report-plugin-1.2.0.jar "$PLUGIN_DIR/"
+install -m 0644 sonar-offline-report-plugin-1.2.1.jar "$PLUGIN_DIR/"
 "$SONARQUBE_HOME/bin/macosx-universal-64/sonar.sh" start
 tail -n 200 "$SONARQUBE_HOME/logs/sonar.log"
 ```
@@ -331,7 +331,7 @@ curl -fsS "$SONAR_URL/api/server/version"
 Then verify all of the following:
 
 1. Log in as a SonarQube administrator and acknowledge the third-party-plugin warning if prompted.
-2. Open **Administration → Marketplace** and confirm `Offline Report` version `1.2.0` appears in the installed plugins.
+2. Open **Administration → Marketplace** and confirm `Offline Report` version `1.2.1` appears in the installed plugins.
 3. Open a project and select **Extensions → Offline Report**.
 4. Create a small HTML report and confirm the download opens with networking disabled.
 5. Review `logs/sonar.log`, `logs/web.log`, and the container/service logs for plugin-loading or linkage errors.

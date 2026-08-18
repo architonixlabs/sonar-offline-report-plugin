@@ -81,4 +81,4 @@ Capabilities requiring persistence, organization-level policy/workflow, schedule
 
 ## Release posture
 
-Version 1.2.0 is an enterprise candidate/pilot. The implementation boundary is approved, but enterprise GA remains blocked by the concrete evidence gates in [Compatibility](COMPATIBILITY.md) and [Enterprise readiness](ENTERPRISE-READINESS.md).
+Version 1.2.1 is an enterprise candidate/pilot. The implementation boundary is approved, but enterprise GA remains blocked by the concrete evidence gates in [Compatibility](COMPATIBILITY.md) and [Enterprise readiness](ENTERPRISE-READINESS.md).

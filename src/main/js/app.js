@@ -5,7 +5,7 @@
   const STORAGE_KEY = "sonarqube-offline-report-template-v2";
   const FORMAT_NAMES = Object.freeze({
     html: "offline HTML", xlsx: "Excel workbook", docx: "Word document",
-    print: "print view", csv: "issues CSV", json: "JSON snapshot"
+    print: "PDF print view", csv: "issues CSV", json: "JSON snapshot"
   });
 
   const UI_CSS = `
@@ -103,7 +103,7 @@
 
     root.innerHTML = `<main class="page page-limited orp"><header class="orp-header"><div><h1>Create offline report</h1><p class="orp-subtitle">Choose the audience and output. Data is collected once and reused while its scope stays unchanged.</p></div><div class="orp-context"><strong id="orp-project"></strong><span id="orp-branch"></span><small id="orp-cache">No data prepared</small></div></header><div class="orp-warning"><strong>Portable data warning:</strong> exports are no longer protected by SonarQube access controls. Store and share them appropriately. Source code is never exported.</div><form id="orp-form" class="orp-form">
 <section class="orp-card" aria-labelledby="orp-preset-title"><div class="orp-section-head"><div><h2 id="orp-preset-title">1. Choose a report</h2><p>Start with a preset; appearance can be adjusted under Advanced.</p></div></div><div class="orp-choice-grid" id="orp-presets">${app.BUILTIN_TEMPLATES.map((template, index) => `<label class="orp-choice"><input type="radio" name="preset" value="${app.escapeHtml(template.id)}" ${index === 1 ? "checked" : ""}><strong>${app.escapeHtml(template.name)}</strong><span>${app.escapeHtml(template.description)}</span></label>`).join("")}</div></section>
-<section class="orp-card" aria-labelledby="orp-format-title"><div class="orp-section-head"><div><h2 id="orp-format-title">2. Choose a format</h2><p>HTML is the best fully offline experience; Excel is best for analysis.</p></div></div><div class="orp-choice-grid orp-format-grid" id="orp-formats"><label class="orp-choice"><input type="radio" name="format" value="html" checked><strong>Offline HTML</strong><span>Searchable, navigable, single-file report.</span></label><label class="orp-choice"><input type="radio" name="format" value="xlsx"><strong>Excel</strong><span>Typed workbook for sorting and analysis.</span></label><label class="orp-choice"><input type="radio" name="format" value="docx"><strong>Word</strong><span>Fixed, editable management document.</span></label><label class="orp-choice"><input type="radio" name="format" value="print"><strong>Print / Save as PDF</strong><span>Browser print view; use Save as PDF.</span></label></div>
+<section class="orp-card" aria-labelledby="orp-format-title"><div class="orp-section-head"><div><h2 id="orp-format-title">2. Choose a format</h2><p>HTML is the best fully offline experience; Excel is best for analysis.</p></div></div><div class="orp-choice-grid orp-format-grid" id="orp-formats"><label class="orp-choice"><input type="radio" name="format" value="html" checked><strong>Offline HTML</strong><span>Searchable, navigable, single-file report.</span></label><label class="orp-choice"><input type="radio" name="format" value="xlsx"><strong>Excel</strong><span>Typed workbook for sorting and analysis.</span></label><label class="orp-choice"><input type="radio" name="format" value="docx"><strong>Word</strong><span>Fixed, editable management document.</span></label><label class="orp-choice"><input type="radio" name="format" value="print"><strong>PDF</strong><span>Opens a print-ready view; choose Save as PDF.</span></label></div>
 <div id="orp-document-options" class="orp-document-options" hidden><fieldset><legend>Document content</legend><label class="orp-check"><input type="radio" name="document-mode" value="summary" checked> Executive summary</label><label class="orp-check"><input type="radio" name="document-mode" value="register"> Summary + compact issue register</label><div id="orp-scope-options" hidden><strong>Issue scope</strong><label class="orp-check"><input type="radio" name="issue-scope" value="active" checked> Actionable only (accepted and closed issues excluded)</label><label class="orp-check"><input type="radio" name="issue-scope" value="all"> All collected issues</label><small>Word supports at most 2,000 issue rows. Use Excel for larger registers.</small></div></fieldset></div>
 <details><summary>Data-only formats</summary><div class="orp-choice-grid"><label class="orp-choice"><input type="radio" name="format" value="csv"><strong>Issues CSV</strong><span>Flat issue rows for other tools.</span></label><label class="orp-choice"><input type="radio" name="format" value="json"><strong>JSON snapshot</strong><span>Full collected model and manifest.</span></label></div></details></section>
 <section class="orp-card"><details id="orp-advanced"><summary>Advanced data and appearance</summary><div class="orp-advanced-grid"><div><h3>Data scope</h3><fieldset><legend>Include</legend><label class="orp-check"><input id="orp-issues" type="checkbox" checked> Issues</label><label class="orp-check"><input id="orp-components" type="checkbox" checked> File/component inventory</label><label class="orp-check"><input id="orp-analyses" type="checkbox" checked> Last 100 analyses</label><label class="orp-check"><input id="orp-people" type="checkbox"> Assignee and author identifiers</label></fieldset><label>Maximum issues<input id="orp-max-issues" type="number" value="10000" min="1" max="10000"></label><small>Exports are marked incomplete if server or configured limits prevent full collection.</small></div><div><h3>Appearance</h3><label>Report title<input id="orp-title" type="text" maxlength="160"></label><label>Subtitle<input id="orp-subtitle" type="text" maxlength="240"></label><label>Accent color<input id="orp-color" type="color"></label><label>Introduction<textarea id="orp-intro" maxlength="2000"></textarea></label><label>Footer<textarea id="orp-footer" maxlength="1000"></textarea></label><fieldset><legend>Sections</legend><label class="orp-check"><input id="orp-sec-summary" type="checkbox"> Summary</label><label class="orp-check"><input id="orp-sec-measures" type="checkbox"> Measures</label><label class="orp-check"><input id="orp-sec-issues" type="checkbox"> Issues</label><label class="orp-check"><input id="orp-sec-components" type="checkbox"> Files</label><label class="orp-check"><input id="orp-sec-analyses" type="checkbox"> Analyses</label></fieldset><small>Saved templates contain presentation settings only and are stored for this browser origin.</small><div class="orp-actions"><button type="button" id="orp-save-template">Save template</button><button type="button" id="orp-use-template">Use saved</button><button type="button" id="orp-delete-template">Delete saved</button><button type="button" id="orp-export-template">Export</button><button type="button" id="orp-import-template">Import</button><input class="orp-file" id="orp-template-file" type="file" accept="application/json,.json"></div></div></div></details></section>
@@ -229,10 +229,11 @@
       const issueScope = selected("issue-scope") || "active";
       let printWindow = null;
       if (format === "print") {
-        printWindow = global.open("", "_blank");
-        if (!printWindow) { setStatus("The print view was blocked. Allow pop-ups for this SonarQube site and try again.", "error"); return; }
-        printWindow.opener = null;
-        printWindow.document.write("<!doctype html><title>Preparing print view…</title><p>Preparing print view…</p>");
+        try { printWindow = global.open("", "_blank"); } catch (_) { printWindow = null; }
+        if (printWindow) {
+          try { printWindow.opener = null; } catch (_) { /* retained reference is still used below */ }
+          printWindow.document.write("<!doctype html><meta charset=utf-8><title>Preparing PDF print view…</title><p>Preparing the PDF print view…</p>");
+        }
       }
       setWorking(true);
       setStatus(snapshot && preparedSignature === currentSignature() ? "Using prepared data…" : "Collecting current data…");
@@ -255,10 +256,13 @@
           const html = app.buildHtmlReport(report, summaryTemplate(template, includeRegister), {
             purpose: "print", mode, issueScope
           });
-          printWindow.document.open();
-          printWindow.document.write(html);
-          printWindow.document.close();
-          setTimeout(() => { printWindow.focus(); printWindow.print(); }, 250);
+          if (printWindow && !printWindow.closed) {
+            printWindow.document.open();
+            printWindow.document.write(html);
+            printWindow.document.close();
+          } else {
+            app.downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), app.safeFileName(`${base}-print-view`, "html"));
+          }
         } else if (format === "csv") {
           if (!report.collectionScope.issues) throw new Error("Issues were not included in the prepared data. Enable Issues under Advanced and try again.");
           app.downloadBlob(new Blob([app.toCsv(app.issueRows(report))], { type: "text/csv;charset=utf-8" }), app.safeFileName(`${report.project.key}-issues`, "csv"));
@@ -266,7 +270,12 @@
           const content = JSON.stringify({ manifest: app.reportManifest(report), report }, null, 2);
           app.downloadBlob(new Blob([content], { type: "application/json" }), app.safeFileName(base, "json"));
         }
-        setStatus(`${FORMAT_NAMES[format]} created. Choose another format to reuse the prepared data.`, report.complete ? "success" : "error");
+        const completion = format === "print"
+          ? printWindow && !printWindow.closed
+            ? "PDF print view opened. If the print dialog does not appear, select Print / Save as PDF in that view."
+            : "The browser blocked the PDF window, so a print-ready HTML file was downloaded. Open it and select Print / Save as PDF."
+          : `${FORMAT_NAMES[format]} created. Choose another format to reuse the prepared data.`;
+        setStatus(completion, report.complete ? "success" : "error");
       } catch (error) {
         if (printWindow && !printWindow.closed) printWindow.close();
         setStatus(error.name === "AbortError" ? "Collection cancelled." : `Could not create ${FORMAT_NAMES[format]}: ${error.message}`, error.name === "AbortError" ? "info" : "error");
