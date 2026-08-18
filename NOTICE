@@ -1,0 +1,12 @@
+SonarQube Offline Report Plugin
+Copyright 2026 Architonix
+
+Licensed under the Apache License, Version 2.0. See LICENSE.
+
+SonarQube is a trademark of SonarSource SA. This project is an independent
+community plugin and is not sponsored by, endorsed by, or affiliated with
+SonarSource SA.
+
+Third-party dependency and license information is recorded in
+docs/THIRD-PARTY-NOTICES.md. Release artifacts must include the applicable
+license and notice material identified by the approved release inventory.

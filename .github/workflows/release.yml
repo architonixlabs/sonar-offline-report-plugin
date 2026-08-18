@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Install browser build dependencies
+        run: npm ci
+
+      - name: Verify tag and project versions
+        env:
+          TAG_VERSION: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const expected = process.env.TAG_VERSION.replace(/^v/, "");
+          const packageVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
+          const pom = readFileSync("pom.xml", "utf8");
+          const pomVersion = pom.match(/<artifactId>sonar-offline-report-plugin<\/artifactId>\s*<version>([^<]+)<\/version>/)?.[1];
+          if (!expected || packageVersion !== expected || pomVersion !== expected) {
+            console.error("Tag/project version mismatch", { expected, packageVersion, pomVersion });
+            process.exit(1);
+          }
+          NODE
+
+      - name: Build and test browser exporter
+        run: npm test
+
+      - name: Verify generated asset is committed
+        run: |
+          npm run check
+          git diff --exit-code -- src/main/resources/static/report_page.js
+
+      - name: Build and test plugin
+        run: mvn --batch-mode --no-transfer-progress clean verify
+
+      - name: Create checksum
+        shell: bash
+        run: |
+          cd target
+          sha256sum sonar-offline-report-plugin-*.jar > sonar-offline-report-plugin-${GITHUB_REF_NAME#v}.jar.sha256
+
+      - name: Publish GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; preserving its validated assets."
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              target/sonar-offline-report-plugin-*.jar \
+              target/sonar-offline-report-plugin-*.jar.sha256 \
+              --prerelease \
+              --generate-notes \
+              --title "$GITHUB_REF_NAME — Enterprise Candidate"
+          fi

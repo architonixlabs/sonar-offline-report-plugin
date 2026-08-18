@@ -1,0 +1,88 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install browser build dependencies
+        run: npm ci
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Verify declared versions agree
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const packageVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
+          const pom = readFileSync("pom.xml", "utf8");
+          const pomVersion = pom.match(/<artifactId>sonar-offline-report-plugin<\/artifactId>\s*<version>([^<]+)<\/version>/)?.[1];
+          const values = { packageVersion, pomVersion };
+          if (!pomVersion || new Set(Object.values(values)).size !== 1) {
+            console.error("Version mismatch:", values);
+            process.exit(1);
+          }
+          console.log(`Verified version ${packageVersion}`);
+          NODE
+
+      - name: Build and test browser exporter
+        run: npm test
+
+      - name: Verify generated browser asset is current
+        run: |
+          npm run check
+          git diff --exit-code -- src/main/resources/static/report_page.js
+
+      - name: Build and test plugin
+        run: mvn --batch-mode --no-transfer-progress clean verify
+
+      - name: Inspect required JAR entries
+        shell: bash
+        run: |
+          jar_file="$(find target -maxdepth 1 -type f -name 'sonar-offline-report-plugin-*.jar' -print -quit)"
+          test -n "$jar_file"
+          jar tf "$jar_file" | grep -Fx 'com/architonix/sonarqube/offlinereport/OfflineReportPlugin.class'
+          jar tf "$jar_file" | grep -Fx 'static/report_page.js'
+
+      - name: Record artifact digest
+        shell: bash
+        run: sha256sum target/sonar-offline-report-plugin-*.jar
+
+      - name: Enterprise release reminder
+        shell: bash
+        run: |
+          echo 'CI success does not confer enterprise GA status.'
+          echo 'Close the manual gates in docs/ENTERPRISE-READINESS.md before promotion.'

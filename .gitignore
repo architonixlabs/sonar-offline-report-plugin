@@ -1,0 +1,28 @@
+# Build and dependency outputs
+/target/
+/node_modules/
+/coverage/
+/.nyc_output/
+
+# Local browser and test artifacts
+/chrome-*/
+/playwright-report/
+/test-results/
+*.log
+*.tmp
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# IDE and operating-system files
+/.idea/
+/.vscode/
+*.iml
+.classpath
+.project
+.settings/
+.DS_Store
+Thumbs.db
+Desktop.ini
