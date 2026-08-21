@@ -14,7 +14,7 @@ if (!token && process.env.OFFLINE_REPORT_ENV_FILE) {
 }
 
 if (!sonarUrl || !projectKey || !token || !downloadPath) {
-  throw new Error("OFFLINE_REPORT_URL, PROJECT, TOKEN, and DOWNLOADS are required.");
+  throw new Error("OFFLINE_REPORT_URL, OFFLINE_REPORT_PROJECT, OFFLINE_REPORT_TOKEN, and OFFLINE_REPORT_DOWNLOADS are required.");
 }
 
 const targets = await (await fetch(`${cdpBase}/json/list`)).json();
@@ -68,6 +68,15 @@ async function evaluate(expression) {
   return result.result.value;
 }
 
+async function waitFor(label, probeExpression, timeoutMs = 60000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (await evaluate(probeExpression)) return;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(`Timed out waiting for ${label} after ${Math.round(timeoutMs / 1000)} seconds.`);
+}
+
 await send("Network.enable");
 await send("Page.enable");
 await send("Runtime.enable");
@@ -77,7 +86,7 @@ await send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath, eve
 await send("Page.navigate", {
   url: `${sonarUrl}/project/extension/offlinereport/report_page?id=${encodeURIComponent(projectKey)}`
 });
-await new Promise((resolve) => setTimeout(resolve, 7000));
+await waitFor("the Offline Report page", `Boolean(document.querySelector('.orp'))`, 30000);
 
 const layout = await evaluate(`(() => {
   const root = document.querySelector('.orp');
@@ -104,7 +113,11 @@ console.log(JSON.stringify({ layout }));
 if (layout.pluginRoot) {
   await evaluate(`(() => { const input = document.querySelector('input[name="format"][value=${JSON.stringify(outputFormat)}]'); if (!input) throw new Error('Requested format is unavailable'); input.checked = true; input.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await evaluate(`document.querySelector('#orp-create').click(); true`);
-  await new Promise((resolve) => setTimeout(resolve, 15000));
+  await waitFor("report collection and export", `(() => {
+    const create = document.querySelector('#orp-create');
+    const status = document.querySelector('#orp-status')?.textContent || '';
+    return create && !create.disabled && !/^(Ready to create|Collecting current data|Using prepared data|Reading )/.test(status);
+  })()`, 90000);
   const collected = await evaluate(`(() => ({
     status: document.querySelector('#orp-status')?.textContent,
     cache: document.querySelector('#orp-cache')?.textContent,

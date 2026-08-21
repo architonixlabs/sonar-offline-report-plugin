@@ -1,5 +1,5 @@
-/* SonarQube Offline Report Plugin 1.2.1 - generated; edit src/main/js and run npm run build. */
-window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
+/* SonarQube Offline Report Plugin 1.3.0 - generated; edit src/main/js and run npm run build. */
+window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.3.0" });
 (function (global) {
   "use strict";
 
@@ -12,7 +12,7 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     ? String(global.OfflineReportBuild.pluginVersion)
     : "development";
   const MAX_TEMPLATE_BYTES = 65536;
-  const DANGEROUS_CELL = /^[\u0000-\u0020]*[=+\-@]/;
+  const DANGEROUS_CELL = /^[\u0000-\u0020]*[=+\-@\uFF1D\uFF0B\uFF0D\uFF20]/;
   const LABEL_OVERRIDES = Object.freeze({
     CODE_SMELL: "Code Smell",
     FALSE_POSITIVE: "False Positive",
@@ -99,9 +99,24 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
       .replace(/'/g, "&#39;");
   }
 
+  function xmlSafeText(value) {
+    let result = "";
+    for (const character of text(value)) {
+      const codePoint = character.codePointAt(0);
+      if (codePoint === 0x09 || codePoint === 0x0A || codePoint === 0x0D
+        || (codePoint >= 0x20 && codePoint <= 0xD7FF)
+        || (codePoint >= 0xE000 && codePoint <= 0xFFFD)
+        || (codePoint >= 0x10000 && codePoint <= 0x10FFFF)) {
+        result += character;
+      } else {
+        result += "\uFFFD";
+      }
+    }
+    return result;
+  }
+
   function xmlEscape(value) {
-    return text(value)
-      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    return xmlSafeText(value)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
@@ -239,6 +254,12 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     if (["FIXED", "FALSE_POSITIVE", "WONTFIX", "CLOSED", "RESOLVED", "REMOVED"].includes(key)
       || ["FIXED", "FALSE_POSITIVE", "WONTFIX", "REMOVED"].includes(resolutionKey)) return "closed";
     return "unknown";
+  }
+
+  function issueLifecycle(issue) {
+    const stored = text(issue && issue.lifecycleStatus).trim().toLowerCase();
+    if (["actionable", "accepted", "closed", "unknown"].includes(stored)) return stored;
+    return issueLifecycleStatus(issue && issue.status, issue && issue.resolution);
   }
 
   function reportManifest(report) {
@@ -393,6 +414,7 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     BUILTIN_TEMPLATES,
     text,
     escapeHtml,
+    xmlSafeText,
     xmlEscape,
     jsonForHtml,
     safeFileName,
@@ -405,6 +427,7 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     formatDate,
     randomReportId,
     issueLifecycleStatus,
+    issueLifecycle,
     reportManifest,
     humanize,
     languageLabel,
@@ -427,6 +450,9 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
 
   const app = global.OfflineReport = global.OfflineReport || {};
   const MAX_CELL_LENGTH = 32767;
+  const MAX_XLSX_BYTES = 75 * 1024 * 1024;
+  const MAX_ZIP_ENTRIES = 65535;
+  const MAX_ZIP_UINT32 = 0xFFFFFFFF;
   const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30);
 
   function numberCell(value) {
@@ -480,17 +506,39 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     return result;
   }
 
+  function utf8Length(value) {
+    let length = 0;
+    for (const character of value) {
+      const codePoint = character.codePointAt(0);
+      length += codePoint <= 0x7F ? 1 : codePoint <= 0x7FF ? 2 : codePoint <= 0xFFFF ? 3 : 4;
+    }
+    return length;
+  }
+
   /** Creates a standards-compliant ZIP using STORE entries, avoiding a runtime dependency. */
-  function zipStore(files) {
+  function zipStore(files, maximumBytes) {
     const encoder = new TextEncoder();
     const now = dosTimestamp(new Date());
     const localParts = [];
     const centralParts = [];
+    const entries = Object.entries(files);
+    const byteLimit = Number.isFinite(maximumBytes) && maximumBytes > 0 ? maximumBytes : MAX_ZIP_UINT32;
+    if (entries.length > MAX_ZIP_ENTRIES) throw new Error("The Office package contains too many ZIP entries.");
     let localOffset = 0;
+    let centralSize = 0;
 
-    Object.entries(files).forEach(([name, content]) => {
+    entries.forEach(([name, content]) => {
+      if (!name || name.startsWith("/") || name.includes("\\") || name.split("/").some((segment) => segment === "." || segment === "..")) {
+        throw new Error(`Blocked unsafe Office package path: ${name}`);
+      }
       const nameBytes = encoder.encode(name);
+      if (nameBytes.length > 0xFFFF) throw new Error("An Office package path exceeds the ZIP32 name limit.");
+      const expectedDataLength = typeof content === "string" ? utf8Length(content) : content.byteLength;
+      const upperPackageSize = localOffset + 30 + nameBytes.length + expectedDataLength
+        + centralSize + 46 + nameBytes.length + 22;
+      if (upperPackageSize > byteLimit) throw new Error("The Office package exceeds its configured size limit.");
       const data = typeof content === "string" ? encoder.encode(content) : content;
+      if (data.length > MAX_ZIP_UINT32) throw new Error("An Office package part exceeds the ZIP32 size limit.");
       const crc = crc32(data);
       const local = new Uint8Array(30 + nameBytes.length);
       const lv = new DataView(local.buffer);
@@ -509,6 +557,10 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
       set32(cv, 42, localOffset); central.set(nameBytes, 46);
       centralParts.push(central);
       localOffset += local.length + data.length;
+      centralSize += central.length;
+      if (localOffset > MAX_ZIP_UINT32 || localOffset + centralSize + 22 > byteLimit) {
+        throw new Error("The Office package exceeds its configured size limit.");
+      }
     });
 
     const centralDirectory = concatArrays(centralParts);
@@ -534,7 +586,11 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
   function safeCell(value, warnings) {
     let result = app.formulaSafe(value);
     if (result.length > MAX_CELL_LENGTH) {
-      result = result.slice(0, MAX_CELL_LENGTH - 1) + "…";
+      let cutoff = MAX_CELL_LENGTH - 1;
+      const before = result.charCodeAt(cutoff - 1);
+      const after = result.charCodeAt(cutoff);
+      if (before >= 0xD800 && before <= 0xDBFF && after >= 0xDC00 && after <= 0xDFFF) cutoff -= 1;
+      result = result.slice(0, cutoff) + "…";
       warnings.add("One or more spreadsheet cells were truncated to Excel's 32,767 character limit.");
     }
     return result;
@@ -737,12 +793,21 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     };
     sheets.forEach((sheet, index) => { files[`xl/worksheets/sheet${index + 1}.xml`] = sheetXml(sheet.rows, truncationWarnings); });
     return {
-      blob: new Blob([zipStore(files)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+      blob: new Blob([zipStore(files, MAX_XLSX_BYTES)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
       warnings: [...truncationWarnings]
     };
   }
 
-  Object.assign(app, { crc32, zipStore, buildXlsx, xlsxRows: toRows, xlsxNumberCell: numberCell, xlsxDateCell: dateCell });
+  Object.assign(app, {
+    MAX_XLSX_BYTES,
+    crc32,
+    zipStore,
+    buildXlsx,
+    xlsxSafeCell: safeCell,
+    xlsxRows: toRows,
+    xlsxNumberCell: numberCell,
+    xlsxDateCell: dateCell
+  });
 })(window);
 
 
@@ -806,7 +871,7 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
   }
 
   function activeIssue(issue) {
-    return app.issueLifecycleStatus(issue.status) === "actionable";
+    return app.issueLifecycle(issue) === "actionable";
   }
 
   function risk(issue) {
@@ -966,7 +1031,7 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
       "docProps/core.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${title}</dc:title><dc:subject>SonarQube offline quality report</dc:subject><dc:creator>SonarQube Offline Report Plugin</dc:creator><dc:description>Portable report for ${project}</dc:description><dcterms:created xsi:type="dcterms:W3CDTF">${created}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${created}</dcterms:modified></cp:coreProperties>`,
       "docProps/app.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>SonarQube Offline Report Plugin</Application><AppVersion>1.0</AppVersion></Properties>`
     };
-    const packageBytes = app.zipStore(files);
+    const packageBytes = app.zipStore(files, MAX_DOCX_BYTES);
     if (packageBytes.byteLength > MAX_DOCX_BYTES) {
       throw new Error(`The Word package exceeds the ${Math.round(MAX_DOCX_BYTES / 1024 / 1024)} MiB safety limit. Reduce the issue scope or use Excel.`);
     }
@@ -1003,6 +1068,9 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     "new_bugs", "new_vulnerabilities", "new_code_smells", "new_violations",
     "new_security_hotspots_reviewed"
   ].join(",");
+  const REQUEST_TIMEOUT_MS = 45000;
+  const MAX_RETRY_DELAY_MS = 30000;
+  const ISSUE_SEARCH_WINDOW = 10000;
 
   function assertAllowedPath(path) {
     if (!Object.values(API_PATHS).includes(path)) throw new Error(`Blocked unexpected API path: ${path}`);
@@ -1012,15 +1080,85 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     if (signal && signal.aborted) throw new DOMException("Export cancelled", "AbortError");
   }
 
-  function sleep(milliseconds) {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
+  function abortError() {
+    return new DOMException("Export cancelled", "AbortError");
+  }
+
+  function sleep(milliseconds, signal) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (handler, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (signal) signal.removeEventListener("abort", onAbort);
+        handler(value);
+      };
+      const onAbort = () => finish(reject, abortError());
+      const timer = setTimeout(() => finish(resolve), Math.max(0, milliseconds));
+      if (signal) {
+        if (signal.aborted) onAbort();
+        else signal.addEventListener("abort", onAbort, { once: true });
+      }
+    });
   }
 
   function errorStatus(error) {
     return error && (error.status || (error.response && error.response.status));
   }
 
-  async function apiGet(path, params, signal, retries) {
+  function errorHeader(error, name) {
+    const responseHeaders = error && error.response && error.response.headers;
+    const headers = responseHeaders || (error && error.headers);
+    if (!headers) return "";
+    if (typeof headers.get === "function") return headers.get(name) || "";
+    const wanted = name.toLowerCase();
+    const key = Object.keys(headers).find((candidate) => candidate.toLowerCase() === wanted);
+    return key ? headers[key] : "";
+  }
+
+  function retryAfterMilliseconds(error, now) {
+    const value = String(errorHeader(error, "Retry-After") || "").trim();
+    if (!value) return 0;
+    if (/^\d+(?:\.\d+)?$/.test(value)) return Math.max(0, Number(value) * 1000);
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? Math.max(0, parsed - (now === undefined ? Date.now() : now)) : 0;
+  }
+
+  function retryDelayMilliseconds(error, attempt) {
+    const localDelay = 300 * (2 ** attempt) + Math.floor(Math.random() * 100);
+    return Math.min(MAX_RETRY_DELAY_MS, Math.max(localDelay, retryAfterMilliseconds(error)));
+  }
+
+  function requestWithControl(requestPromise, signal, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (handler, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (signal) signal.removeEventListener("abort", onAbort);
+        handler(value);
+      };
+      const onAbort = () => finish(reject, abortError());
+      const timeout = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : REQUEST_TIMEOUT_MS;
+      const timer = setTimeout(() => {
+        const error = new Error(`SonarQube did not respond within ${Math.round(timeout / 1000)} seconds.`);
+        error.name = "TimeoutError";
+        finish(reject, error);
+      }, timeout);
+      if (signal) {
+        if (signal.aborted) onAbort();
+        else signal.addEventListener("abort", onAbort, { once: true });
+      }
+      Promise.resolve(requestPromise).then(
+        (value) => finish(resolve, value),
+        (error) => finish(reject, error)
+      );
+    });
+  }
+
+  async function apiGet(path, params, signal, retries, timeoutMs) {
     assertAllowedPath(path);
     abortIfNeeded(signal);
     const request = global.SonarRequest && global.SonarRequest.getJSON;
@@ -1029,13 +1167,14 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     let attempt = 0;
     while (true) {
       try {
-        const result = await request(path, params || {});
+        const result = await requestWithControl(request(path, params || {}), signal, timeoutMs);
         abortIfNeeded(signal);
         return result;
       } catch (error) {
+        if (error && (error.name === "AbortError" || error.name === "TimeoutError")) throw error;
         const status = errorStatus(error);
         if (attempt >= maxRetries || ![429, 503].includes(status)) throw error;
-        await sleep(300 * (2 ** attempt) + Math.floor(Math.random() * 100));
+        await sleep(retryDelayMilliseconds(error, attempt), signal);
         attempt += 1;
         abortIfNeeded(signal);
       }
@@ -1121,6 +1260,10 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     const maximumPages = Math.ceil(normalizedLimit / pageSize) + 2;
     while (items.length < normalizedLimit) {
       abortIfNeeded(signal);
+      if (path === API_PATHS.issues && (page - 1) * pageSize >= ISSUE_SEARCH_WINDOW) {
+        terminationReason = "api_search_window";
+        break;
+      }
       // Keep page size stable: changing ps changes the server-side page offset and can duplicate rows.
       const response = await apiGet(path, { ...baseParams, p: page, ps: pageSize }, signal);
       const pageItems = Array.isArray(response[arrayName]) ? response[arrayName] : [];
@@ -1246,6 +1389,7 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
       analysisSnapshot: { requested: true, state: "complete" }
     };
     const common = branchParameters(branchLike);
+    const branchScoped = Object.keys(common).length > 0;
     const startedAt = new Date().toISOString();
     progress({ phase: "metadata", message: "Reading project metadata…" });
 
@@ -1258,7 +1402,7 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     }, signal);
     const measuredComponent = measuresResponse.component || component;
     let analysisDateBeforeCollection = app.text(measuredComponent.analysisDate || component.analysisDate);
-    if (!analysisDateBeforeCollection) {
+    if (!analysisDateBeforeCollection && !branchScoped) {
       const initialAnalysis = await optional("Initial analysis identity", () => apiGet(API_PATHS.analyses, {
         project: component.key, p: 1, ps: 1
       }, signal), { analyses: [] }, warnings);
@@ -1278,6 +1422,8 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
       issueResult = await collectPaged(API_PATHS.issues, {
         components: component.key,
         additionalFields: "rules",
+        s: "CREATION_DATE",
+        asc: true,
         ...common
       }, "issues", options.maxIssues, (current, total) => progress({
         phase: "issues", message: `Reading issues: ${current} of ${total || "?"}`, current, total
@@ -1299,6 +1445,8 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
         component: component.key,
         qualifiers: "FIL",
         strategy: "leaves",
+        s: "path",
+        asc: true,
         ...common
       }, "components", options.maxComponents, () => {}, signal), {
         items: [], expected: 0, paging: { expected: 0, exported: 0, limit: options.maxComponents }
@@ -1324,12 +1472,19 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
     let analysesFailed = false;
     if (options.includeAnalyses) {
       progress({ phase: "analyses", message: "Reading analysis history…" });
-      const response = await optional("Analysis history", () => apiGet(API_PATHS.analyses, {
-        project: component.key, p: 1, ps: 100
-      }, signal), { analyses: [] }, warnings, (error) => {
+      let response = { analyses: [] };
+      if (branchScoped) {
         analysesFailed = true;
-        datasetStates.analyses = failedDatasetState(error);
-      });
+        datasetStates.analyses = { requested: true, state: "not_available", reason: "branch_history_not_supported" };
+        warnings.push("Analysis history was excluded because the public project analyses API does not support branch or pull-request scope.");
+      } else {
+        response = await optional("Analysis history", () => apiGet(API_PATHS.analyses, {
+          project: component.key, p: 1, ps: 100
+        }, signal), { analyses: [] }, warnings, (error) => {
+          analysesFailed = true;
+          datasetStates.analyses = failedDatasetState(error);
+        });
+      }
       const analysisIdentities = new Set();
       let analysisDuplicates = 0;
       analyses = (response.analyses || []).filter((item) => {
@@ -1365,14 +1520,16 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
 
     let analysisDateAfterCollection = "";
     let snapshotCheckFailed = false;
-    const finalAnalysisResponse = await optional("Analysis consistency check", () => apiGet(API_PATHS.analyses, {
-      project: component.key, p: 1, ps: 1
-    }, signal), null, warnings, (error) => {
+    const finalAnalysisResponse = await optional("Analysis consistency check", () => branchScoped
+      ? apiGet(API_PATHS.measures, { component: component.key, metricKeys: METRICS, ...common }, signal)
+      : apiGet(API_PATHS.analyses, { project: component.key, p: 1, ps: 1 }, signal), null, warnings, (error) => {
       snapshotCheckFailed = true;
       datasetStates.analysisSnapshot = failedDatasetState(error);
     });
     if (!snapshotCheckFailed) {
-      analysisDateAfterCollection = app.text(finalAnalysisResponse && finalAnalysisResponse.analyses && finalAnalysisResponse.analyses[0] && finalAnalysisResponse.analyses[0].date);
+      analysisDateAfterCollection = branchScoped
+        ? app.text(finalAnalysisResponse && finalAnalysisResponse.component && finalAnalysisResponse.component.analysisDate)
+        : app.text(finalAnalysisResponse && finalAnalysisResponse.analyses && finalAnalysisResponse.analyses[0] && finalAnalysisResponse.analyses[0].date);
       if (!analysisDateBeforeCollection || !analysisDateAfterCollection) {
         datasetStates.analysisSnapshot = { requested: true, state: "not_available", reason: "analysis_identity_missing" };
         warnings.push("Analysis snapshot identity was unavailable; report consistency could not be verified.");
@@ -1444,8 +1601,15 @@ window.OfflineReportBuild = Object.freeze({ pluginVersion: "1.2.1" });
   Object.assign(app, {
     API_PATHS,
     METRICS,
+    REQUEST_TIMEOUT_MS,
+    MAX_RETRY_DELAY_MS,
+    ISSUE_SEARCH_WINDOW,
     assertAllowedPath,
     branchParameters,
+    apiGet,
+    retryAfterMilliseconds,
+    retryDelayMilliseconds,
+    requestWithControl,
     normalizeIssue,
     collectPaged,
     collectReport
@@ -1591,7 +1755,7 @@ footer{text-align:center;background:#f8fafc}
     const embeddedReport = exportOptions.purpose === "print" ? { ...report, exportOptions } : report;
     const collectedIssues = (report.issues || []).length;
     const exportedIssues = exportOptions.mode === "register"
-      ? (report.issues || []).filter((issue) => exportOptions.issueScope === "all" || app.issueLifecycleStatus(issue.status, issue.resolution) === "actionable").length
+      ? (report.issues || []).filter((issue) => exportOptions.issueScope === "all" || app.issueLifecycle(issue) === "actionable").length
       : 0;
     const printManifest = exportOptions.purpose === "print" ? `<aside class="print-manifest" aria-label="Print export manifest"><strong>Print export manifest</strong><dl><dt>Mode</dt><dd>${exportOptions.mode === "register" ? "Summary + compact issue register" : "Executive summary"}</dd><dt>Issue scope</dt><dd>${exportOptions.mode === "register" ? (exportOptions.issueScope === "all" ? "All collected" : "Actionable only") : "Not included"}</dd><dt>Issue rows</dt><dd>${exportedIssues} exported / ${collectedIssues} collected</dd><dt>Completeness</dt><dd>${report.complete ? "Complete for selected collection scope" : "Incomplete — review data provenance"}</dd><dt>Report ID</dt><dd>${app.escapeHtml(report.reportId || "Not provided")}</dd><dt>Generated UTC</dt><dd>${app.escapeHtml(report.generatedAt || "Not provided")}</dd></dl></aside>` : "";
     const printToolbar = exportOptions.purpose === "print" ? `<aside class="print-toolbar" aria-label="PDF export controls"><button type="button" id="print-now">Print / Save as PDF</button><p>If the print dialog did not open automatically, select this button. In the Destination or Printer field, choose <strong>Save as PDF</strong>, then save the file.</p></aside>` : "";

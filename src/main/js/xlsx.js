@@ -3,6 +3,9 @@
 
   const app = global.OfflineReport = global.OfflineReport || {};
   const MAX_CELL_LENGTH = 32767;
+  const MAX_XLSX_BYTES = 75 * 1024 * 1024;
+  const MAX_ZIP_ENTRIES = 65535;
+  const MAX_ZIP_UINT32 = 0xFFFFFFFF;
   const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30);
 
   function numberCell(value) {
@@ -56,17 +59,39 @@
     return result;
   }
 
+  function utf8Length(value) {
+    let length = 0;
+    for (const character of value) {
+      const codePoint = character.codePointAt(0);
+      length += codePoint <= 0x7F ? 1 : codePoint <= 0x7FF ? 2 : codePoint <= 0xFFFF ? 3 : 4;
+    }
+    return length;
+  }
+
   /** Creates a standards-compliant ZIP using STORE entries, avoiding a runtime dependency. */
-  function zipStore(files) {
+  function zipStore(files, maximumBytes) {
     const encoder = new TextEncoder();
     const now = dosTimestamp(new Date());
     const localParts = [];
     const centralParts = [];
+    const entries = Object.entries(files);
+    const byteLimit = Number.isFinite(maximumBytes) && maximumBytes > 0 ? maximumBytes : MAX_ZIP_UINT32;
+    if (entries.length > MAX_ZIP_ENTRIES) throw new Error("The Office package contains too many ZIP entries.");
     let localOffset = 0;
+    let centralSize = 0;
 
-    Object.entries(files).forEach(([name, content]) => {
+    entries.forEach(([name, content]) => {
+      if (!name || name.startsWith("/") || name.includes("\\") || name.split("/").some((segment) => segment === "." || segment === "..")) {
+        throw new Error(`Blocked unsafe Office package path: ${name}`);
+      }
       const nameBytes = encoder.encode(name);
+      if (nameBytes.length > 0xFFFF) throw new Error("An Office package path exceeds the ZIP32 name limit.");
+      const expectedDataLength = typeof content === "string" ? utf8Length(content) : content.byteLength;
+      const upperPackageSize = localOffset + 30 + nameBytes.length + expectedDataLength
+        + centralSize + 46 + nameBytes.length + 22;
+      if (upperPackageSize > byteLimit) throw new Error("The Office package exceeds its configured size limit.");
       const data = typeof content === "string" ? encoder.encode(content) : content;
+      if (data.length > MAX_ZIP_UINT32) throw new Error("An Office package part exceeds the ZIP32 size limit.");
       const crc = crc32(data);
       const local = new Uint8Array(30 + nameBytes.length);
       const lv = new DataView(local.buffer);
@@ -85,6 +110,10 @@
       set32(cv, 42, localOffset); central.set(nameBytes, 46);
       centralParts.push(central);
       localOffset += local.length + data.length;
+      centralSize += central.length;
+      if (localOffset > MAX_ZIP_UINT32 || localOffset + centralSize + 22 > byteLimit) {
+        throw new Error("The Office package exceeds its configured size limit.");
+      }
     });
 
     const centralDirectory = concatArrays(centralParts);
@@ -110,7 +139,11 @@
   function safeCell(value, warnings) {
     let result = app.formulaSafe(value);
     if (result.length > MAX_CELL_LENGTH) {
-      result = result.slice(0, MAX_CELL_LENGTH - 1) + "…";
+      let cutoff = MAX_CELL_LENGTH - 1;
+      const before = result.charCodeAt(cutoff - 1);
+      const after = result.charCodeAt(cutoff);
+      if (before >= 0xD800 && before <= 0xDBFF && after >= 0xDC00 && after <= 0xDFFF) cutoff -= 1;
+      result = result.slice(0, cutoff) + "…";
       warnings.add("One or more spreadsheet cells were truncated to Excel's 32,767 character limit.");
     }
     return result;
@@ -313,10 +346,19 @@
     };
     sheets.forEach((sheet, index) => { files[`xl/worksheets/sheet${index + 1}.xml`] = sheetXml(sheet.rows, truncationWarnings); });
     return {
-      blob: new Blob([zipStore(files)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+      blob: new Blob([zipStore(files, MAX_XLSX_BYTES)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
       warnings: [...truncationWarnings]
     };
   }
 
-  Object.assign(app, { crc32, zipStore, buildXlsx, xlsxRows: toRows, xlsxNumberCell: numberCell, xlsxDateCell: dateCell });
+  Object.assign(app, {
+    MAX_XLSX_BYTES,
+    crc32,
+    zipStore,
+    buildXlsx,
+    xlsxSafeCell: safeCell,
+    xlsxRows: toRows,
+    xlsxNumberCell: numberCell,
+    xlsxDateCell: dateCell
+  });
 })(window);

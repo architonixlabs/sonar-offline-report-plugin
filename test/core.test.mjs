@@ -37,6 +37,32 @@ test("CSV neutralizes formula injection and follows RFC 4180 quoting", async () 
   assert.match(csv, /"a,b\r\nline"/);
 });
 
+test("formula neutralization covers leading controls and locale-specific full-width initiators", async () => {
+  const app = await loadApp(["core.js"]);
+  for (const prefix of ["", " ", "\t", "\r", "\n", "\u0000"]) {
+    for (const initiator of ["=", "+", "-", "@", "＝", "＋", "－", "＠"]) {
+      assert.ok(app.formulaSafe(`${prefix}${initiator}1+1`).startsWith("'"), `${JSON.stringify(prefix + initiator)} was not neutralized`);
+    }
+  }
+});
+
+test("XML sanitization preserves valid Unicode and replaces every invalid XML 1.0 scalar", async () => {
+  const app = await loadApp(["core.js"]);
+  const source = `ok😀e\u0301\u0001\uFFFE\uFFFF\uD800x\uDC00<&`;
+  const sanitized = app.xmlSafeText(source);
+  assert.match(sanitized, /ok😀e\u0301/);
+  assert.doesNotMatch(sanitized, /[\u0001\uFFFE\uFFFF\uD800-\uDFFF]/u);
+  assert.ok((sanitized.match(/\uFFFD/g) || []).length >= 5);
+  assert.match(app.xmlEscape(source), /&lt;&amp;/);
+});
+
+test("shared issue lifecycle honors the normalized model before legacy fields", async () => {
+  const app = await loadApp(["core.js"]);
+  assert.equal(app.issueLifecycle({ lifecycleStatus: "closed", status: "OPEN" }), "closed");
+  assert.equal(app.issueLifecycle({ status: "OPEN", resolution: "FIXED" }), "actionable");
+  assert.equal(app.issueLifecycle({ status: "FUTURE_STATE" }), "unknown");
+});
+
 test("CSV issue exports use professional labels instead of raw Sonar enum tokens", async () => {
   const app = await loadApp(["core.js"]);
   const rows = app.issueRows({

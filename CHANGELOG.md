@@ -5,6 +5,34 @@ and intends to use [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## 1.3.0 - 2026-08-21 (enterprise candidate)
+
+### Changed
+
+- Added prompt local request cancellation, a 45-second request timeout,
+  abortable bounded retry delays, and `Retry-After` parsing when the SonarQube
+  request error exposes response headers.
+- Added explicit best-effort issue/component sorting and a hard stop before the
+  issue API's 10,000-row search-window boundary.
+- Excluded unsupported branch/pull-request analysis history and now verifies
+  branch snapshot identity through a repeated branch-aware measures request.
+- Unified DOCX/print actionable filtering on the normalized issue lifecycle.
+- Hardened CSV formula neutralization for full-width initiators and XML output
+  for invalid Unicode scalars and surrogate-safe XLSX truncation.
+- Added pre-assembly ZIP path, entry-count and package-size checks for DOCX and
+  XLSX.
+- Added a SHA-256-pinned Maven Wrapper, build-environment enforcement, CycloneDX
+  SBOM generation, immutable GitHub Action revisions, and release checks for
+  LICENSE/NOTICE/SBOM artifacts.
+- Replaced fixed delays in the live browser helper with bounded DOM-state waits
+  and corrected its required environment-variable diagnostics.
+
+### Tests
+
+- Added request cancellation/timeout/backoff parsing, 10,000-row boundary,
+  stable-sort, branch-scope, Unicode, package-budget, and cross-format lifecycle
+  regression coverage.
+
 ## 1.2.1 - 2026-08-18 (enterprise candidate)
 
 ### Fixed

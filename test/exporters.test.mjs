@@ -70,6 +70,31 @@ test("DOCX refuses an oversized issue appendix instead of silently truncating", 
   );
 });
 
+test("Office ZIP writer rejects unsafe paths and over-budget packages before final assembly", async () => {
+  const app = await loadApp(["core.js", "xlsx.js"]);
+  assert.throws(() => app.zipStore({ "../outside.xml": "x" }, 1024), /unsafe Office package path/);
+  assert.throws(() => app.zipStore({ "safe.xml": "x".repeat(1024) }, 128), /configured size limit/);
+});
+
+test("XLSX truncation never splits a Unicode surrogate pair", async () => {
+  const app = await loadApp(["core.js", "xlsx.js"]);
+  const longMessage = `${"a".repeat(32765)}😀tail`;
+  const result = app.xlsxSafeCell(longMessage, new Set());
+  assert.equal(result.length, 32766);
+  assert.doesNotMatch(result, /[\uD800-\uDFFF]$/);
+  assert.ok(result.endsWith("…"));
+});
+
+test("DOCX actionable scope follows the normalized lifecycle shared by other exporters", async () => {
+  const app = await loadApp(["core.js", "xlsx.js", "docx.js"]);
+  const report = sampleReport({
+    issues: [{ ...maliciousIssue, status: "OPEN", lifecycleStatus: "closed" }],
+    issuePaging: { expected: 1, exported: 1, limit: 10000 }
+  });
+  const result = app.buildDocx(report, app.BUILTIN_TEMPLATES[1], { includeIssueRegister: true, issueScope: "active" });
+  assert.equal(result.issueCount, 0);
+});
+
 test("print-ready HTML discloses exact mode, scope, count, report ID and completeness", async () => {
   const app = await loadApp();
   const report = sampleReport({

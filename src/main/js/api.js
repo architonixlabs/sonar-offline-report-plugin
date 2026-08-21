@@ -19,6 +19,9 @@
     "new_bugs", "new_vulnerabilities", "new_code_smells", "new_violations",
     "new_security_hotspots_reviewed"
   ].join(",");
+  const REQUEST_TIMEOUT_MS = 45000;
+  const MAX_RETRY_DELAY_MS = 30000;
+  const ISSUE_SEARCH_WINDOW = 10000;
 
   function assertAllowedPath(path) {
     if (!Object.values(API_PATHS).includes(path)) throw new Error(`Blocked unexpected API path: ${path}`);
@@ -28,15 +31,85 @@
     if (signal && signal.aborted) throw new DOMException("Export cancelled", "AbortError");
   }
 
-  function sleep(milliseconds) {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
+  function abortError() {
+    return new DOMException("Export cancelled", "AbortError");
+  }
+
+  function sleep(milliseconds, signal) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (handler, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (signal) signal.removeEventListener("abort", onAbort);
+        handler(value);
+      };
+      const onAbort = () => finish(reject, abortError());
+      const timer = setTimeout(() => finish(resolve), Math.max(0, milliseconds));
+      if (signal) {
+        if (signal.aborted) onAbort();
+        else signal.addEventListener("abort", onAbort, { once: true });
+      }
+    });
   }
 
   function errorStatus(error) {
     return error && (error.status || (error.response && error.response.status));
   }
 
-  async function apiGet(path, params, signal, retries) {
+  function errorHeader(error, name) {
+    const responseHeaders = error && error.response && error.response.headers;
+    const headers = responseHeaders || (error && error.headers);
+    if (!headers) return "";
+    if (typeof headers.get === "function") return headers.get(name) || "";
+    const wanted = name.toLowerCase();
+    const key = Object.keys(headers).find((candidate) => candidate.toLowerCase() === wanted);
+    return key ? headers[key] : "";
+  }
+
+  function retryAfterMilliseconds(error, now) {
+    const value = String(errorHeader(error, "Retry-After") || "").trim();
+    if (!value) return 0;
+    if (/^\d+(?:\.\d+)?$/.test(value)) return Math.max(0, Number(value) * 1000);
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? Math.max(0, parsed - (now === undefined ? Date.now() : now)) : 0;
+  }
+
+  function retryDelayMilliseconds(error, attempt) {
+    const localDelay = 300 * (2 ** attempt) + Math.floor(Math.random() * 100);
+    return Math.min(MAX_RETRY_DELAY_MS, Math.max(localDelay, retryAfterMilliseconds(error)));
+  }
+
+  function requestWithControl(requestPromise, signal, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (handler, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (signal) signal.removeEventListener("abort", onAbort);
+        handler(value);
+      };
+      const onAbort = () => finish(reject, abortError());
+      const timeout = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : REQUEST_TIMEOUT_MS;
+      const timer = setTimeout(() => {
+        const error = new Error(`SonarQube did not respond within ${Math.round(timeout / 1000)} seconds.`);
+        error.name = "TimeoutError";
+        finish(reject, error);
+      }, timeout);
+      if (signal) {
+        if (signal.aborted) onAbort();
+        else signal.addEventListener("abort", onAbort, { once: true });
+      }
+      Promise.resolve(requestPromise).then(
+        (value) => finish(resolve, value),
+        (error) => finish(reject, error)
+      );
+    });
+  }
+
+  async function apiGet(path, params, signal, retries, timeoutMs) {
     assertAllowedPath(path);
     abortIfNeeded(signal);
     const request = global.SonarRequest && global.SonarRequest.getJSON;
@@ -45,13 +118,14 @@
     let attempt = 0;
     while (true) {
       try {
-        const result = await request(path, params || {});
+        const result = await requestWithControl(request(path, params || {}), signal, timeoutMs);
         abortIfNeeded(signal);
         return result;
       } catch (error) {
+        if (error && (error.name === "AbortError" || error.name === "TimeoutError")) throw error;
         const status = errorStatus(error);
         if (attempt >= maxRetries || ![429, 503].includes(status)) throw error;
-        await sleep(300 * (2 ** attempt) + Math.floor(Math.random() * 100));
+        await sleep(retryDelayMilliseconds(error, attempt), signal);
         attempt += 1;
         abortIfNeeded(signal);
       }
@@ -137,6 +211,10 @@
     const maximumPages = Math.ceil(normalizedLimit / pageSize) + 2;
     while (items.length < normalizedLimit) {
       abortIfNeeded(signal);
+      if (path === API_PATHS.issues && (page - 1) * pageSize >= ISSUE_SEARCH_WINDOW) {
+        terminationReason = "api_search_window";
+        break;
+      }
       // Keep page size stable: changing ps changes the server-side page offset and can duplicate rows.
       const response = await apiGet(path, { ...baseParams, p: page, ps: pageSize }, signal);
       const pageItems = Array.isArray(response[arrayName]) ? response[arrayName] : [];
@@ -262,6 +340,7 @@
       analysisSnapshot: { requested: true, state: "complete" }
     };
     const common = branchParameters(branchLike);
+    const branchScoped = Object.keys(common).length > 0;
     const startedAt = new Date().toISOString();
     progress({ phase: "metadata", message: "Reading project metadata…" });
 
@@ -274,7 +353,7 @@
     }, signal);
     const measuredComponent = measuresResponse.component || component;
     let analysisDateBeforeCollection = app.text(measuredComponent.analysisDate || component.analysisDate);
-    if (!analysisDateBeforeCollection) {
+    if (!analysisDateBeforeCollection && !branchScoped) {
       const initialAnalysis = await optional("Initial analysis identity", () => apiGet(API_PATHS.analyses, {
         project: component.key, p: 1, ps: 1
       }, signal), { analyses: [] }, warnings);
@@ -294,6 +373,8 @@
       issueResult = await collectPaged(API_PATHS.issues, {
         components: component.key,
         additionalFields: "rules",
+        s: "CREATION_DATE",
+        asc: true,
         ...common
       }, "issues", options.maxIssues, (current, total) => progress({
         phase: "issues", message: `Reading issues: ${current} of ${total || "?"}`, current, total
@@ -315,6 +396,8 @@
         component: component.key,
         qualifiers: "FIL",
         strategy: "leaves",
+        s: "path",
+        asc: true,
         ...common
       }, "components", options.maxComponents, () => {}, signal), {
         items: [], expected: 0, paging: { expected: 0, exported: 0, limit: options.maxComponents }
@@ -340,12 +423,19 @@
     let analysesFailed = false;
     if (options.includeAnalyses) {
       progress({ phase: "analyses", message: "Reading analysis history…" });
-      const response = await optional("Analysis history", () => apiGet(API_PATHS.analyses, {
-        project: component.key, p: 1, ps: 100
-      }, signal), { analyses: [] }, warnings, (error) => {
+      let response = { analyses: [] };
+      if (branchScoped) {
         analysesFailed = true;
-        datasetStates.analyses = failedDatasetState(error);
-      });
+        datasetStates.analyses = { requested: true, state: "not_available", reason: "branch_history_not_supported" };
+        warnings.push("Analysis history was excluded because the public project analyses API does not support branch or pull-request scope.");
+      } else {
+        response = await optional("Analysis history", () => apiGet(API_PATHS.analyses, {
+          project: component.key, p: 1, ps: 100
+        }, signal), { analyses: [] }, warnings, (error) => {
+          analysesFailed = true;
+          datasetStates.analyses = failedDatasetState(error);
+        });
+      }
       const analysisIdentities = new Set();
       let analysisDuplicates = 0;
       analyses = (response.analyses || []).filter((item) => {
@@ -381,14 +471,16 @@
 
     let analysisDateAfterCollection = "";
     let snapshotCheckFailed = false;
-    const finalAnalysisResponse = await optional("Analysis consistency check", () => apiGet(API_PATHS.analyses, {
-      project: component.key, p: 1, ps: 1
-    }, signal), null, warnings, (error) => {
+    const finalAnalysisResponse = await optional("Analysis consistency check", () => branchScoped
+      ? apiGet(API_PATHS.measures, { component: component.key, metricKeys: METRICS, ...common }, signal)
+      : apiGet(API_PATHS.analyses, { project: component.key, p: 1, ps: 1 }, signal), null, warnings, (error) => {
       snapshotCheckFailed = true;
       datasetStates.analysisSnapshot = failedDatasetState(error);
     });
     if (!snapshotCheckFailed) {
-      analysisDateAfterCollection = app.text(finalAnalysisResponse && finalAnalysisResponse.analyses && finalAnalysisResponse.analyses[0] && finalAnalysisResponse.analyses[0].date);
+      analysisDateAfterCollection = branchScoped
+        ? app.text(finalAnalysisResponse && finalAnalysisResponse.component && finalAnalysisResponse.component.analysisDate)
+        : app.text(finalAnalysisResponse && finalAnalysisResponse.analyses && finalAnalysisResponse.analyses[0] && finalAnalysisResponse.analyses[0].date);
       if (!analysisDateBeforeCollection || !analysisDateAfterCollection) {
         datasetStates.analysisSnapshot = { requested: true, state: "not_available", reason: "analysis_identity_missing" };
         warnings.push("Analysis snapshot identity was unavailable; report consistency could not be verified.");
@@ -460,8 +552,15 @@
   Object.assign(app, {
     API_PATHS,
     METRICS,
+    REQUEST_TIMEOUT_MS,
+    MAX_RETRY_DELAY_MS,
+    ISSUE_SEARCH_WINDOW,
     assertAllowedPath,
     branchParameters,
+    apiGet,
+    retryAfterMilliseconds,
+    retryDelayMilliseconds,
+    requestWithControl,
     normalizeIssue,
     collectPaged,
     collectReport

@@ -1,6 +1,6 @@
 # Third-party notices
 
-This file records direct dependencies declared by the project as of the 1.2.1
+This file records direct dependencies declared by the project as of the 1.3.0
 enterprise-candidate work. It is not a substitute for the machine-generated,
 transitive SBOM and license review required for an enterprise release.
 
@@ -16,6 +16,15 @@ transitive SBOM and license review required for an enterprise release.
 |---|---:|---|---|---|
 | JUnit 4 | 4.13.2 | Java tests; not intended for the plugin JAR | Eclipse Public License 1.0 | https://github.com/junit-team/junit4 |
 | AssertJ Core | 3.25.3 | Java tests; not intended for the plugin JAR | Apache License 2.0 | https://assertj.github.io/ |
+
+## Build and release tooling
+
+| Component | Version | Use/distribution | Declared license | Project |
+|---|---:|---|---|---|
+| Apache Maven Wrapper | 3.3.4 | Checked-in launcher scripts; downloads the SHA-256-verified Maven distribution | Apache License 2.0 | https://maven.apache.org/tools/wrapper/ |
+| Apache Maven | 3.9.16 | Build tool downloaded by the wrapper; not bundled in the plugin JAR | Apache License 2.0 | https://maven.apache.org/ |
+| Maven Enforcer Plugin | 3.6.3 | Build environment validation; not bundled in the plugin JAR | Apache License 2.0 | https://maven.apache.org/enforcer/maven-enforcer-plugin/ |
+| CycloneDX Maven Plugin | 2.9.3 | Generates and validates the release SBOM; not bundled in the plugin JAR | Apache License 2.0 | https://github.com/CycloneDX/cyclonedx-maven-plugin |
 
 The browser exporter currently declares no npm runtime or development
 dependencies. Node.js is used as a build/test tool and is not bundled in the

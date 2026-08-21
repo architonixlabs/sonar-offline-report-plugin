@@ -10,7 +10,7 @@
     ? String(global.OfflineReportBuild.pluginVersion)
     : "development";
   const MAX_TEMPLATE_BYTES = 65536;
-  const DANGEROUS_CELL = /^[\u0000-\u0020]*[=+\-@]/;
+  const DANGEROUS_CELL = /^[\u0000-\u0020]*[=+\-@\uFF1D\uFF0B\uFF0D\uFF20]/;
   const LABEL_OVERRIDES = Object.freeze({
     CODE_SMELL: "Code Smell",
     FALSE_POSITIVE: "False Positive",
@@ -97,9 +97,24 @@
       .replace(/'/g, "&#39;");
   }
 
+  function xmlSafeText(value) {
+    let result = "";
+    for (const character of text(value)) {
+      const codePoint = character.codePointAt(0);
+      if (codePoint === 0x09 || codePoint === 0x0A || codePoint === 0x0D
+        || (codePoint >= 0x20 && codePoint <= 0xD7FF)
+        || (codePoint >= 0xE000 && codePoint <= 0xFFFD)
+        || (codePoint >= 0x10000 && codePoint <= 0x10FFFF)) {
+        result += character;
+      } else {
+        result += "\uFFFD";
+      }
+    }
+    return result;
+  }
+
   function xmlEscape(value) {
-    return text(value)
-      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    return xmlSafeText(value)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
@@ -237,6 +252,12 @@
     if (["FIXED", "FALSE_POSITIVE", "WONTFIX", "CLOSED", "RESOLVED", "REMOVED"].includes(key)
       || ["FIXED", "FALSE_POSITIVE", "WONTFIX", "REMOVED"].includes(resolutionKey)) return "closed";
     return "unknown";
+  }
+
+  function issueLifecycle(issue) {
+    const stored = text(issue && issue.lifecycleStatus).trim().toLowerCase();
+    if (["actionable", "accepted", "closed", "unknown"].includes(stored)) return stored;
+    return issueLifecycleStatus(issue && issue.status, issue && issue.resolution);
   }
 
   function reportManifest(report) {
@@ -391,6 +412,7 @@
     BUILTIN_TEMPLATES,
     text,
     escapeHtml,
+    xmlSafeText,
     xmlEscape,
     jsonForHtml,
     safeFileName,
@@ -403,6 +425,7 @@
     formatDate,
     randomReportId,
     issueLifecycleStatus,
+    issueLifecycle,
     reportManifest,
     humanize,
     languageLabel,

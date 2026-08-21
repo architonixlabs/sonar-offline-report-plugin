@@ -40,7 +40,7 @@ Architecture, product/UX, development, and security/QA reviews agreed on these d
 
 The browser adapter uses fixed relative public actions for system status, measures, quality gate, issues, components, and project analyses. It uses the current documented `components` issue parameter and asks only for required rule additions.
 
-Collection is bounded and deterministic: stable first-seen issue-key deduplication records raw rows, unique rows, duplicates removed, first/last totals, termination reason, and reconciliation. Changed totals, unreconciled counts, limits, or changed analysis identity produce an explicit partial snapshot.
+Collection is bounded and uses an explicit best-effort stable sort plus first-seen issue-key deduplication. It records raw rows, unique rows, duplicates removed, first/last totals, termination reason, and reconciliation. Changed totals, unreconciled counts, API search-window boundaries, configured limits, or changed analysis identity produce an explicit partial snapshot. Concurrent mutation can still move equal-sort-key records between pages, so an unchanged total alone is not treated as transactional proof.
 
 ### Report Model v2
 
@@ -57,7 +57,7 @@ Every exporter consumes this object; no exporter reads live UI controls as data 
 
 ### Guided page and lifecycle
 
-The UI provides Executive, Standard, Detailed, and Issue Register presets; professional format cards; collapsed advanced data/appearance settings; a review plan; labelled collection progress; and a single dynamic primary action.
+The UI provides Executive summary, Detailed technical, and Issues only presets; professional format cards; collapsed advanced data/appearance settings; labelled collection progress; and a single dynamic primary action. Word and print formats separately offer an optional compact issue-register mode. Scope changes mark the cached snapshot stale; the next Create action visibly recollects before exporting.
 
 It uses a dedicated, resize-aware vertical viewport that recalculates its available height after browser resize or zoom. A stable scrollbar and bottom clearance keep expanded controls reachable. Controls meet a 44px target, reflow to one column, expose visible focus, and do not encode status by color alone.
 
@@ -81,4 +81,4 @@ Capabilities requiring persistence, organization-level policy/workflow, schedule
 
 ## Release posture
 
-Version 1.2.1 is an enterprise candidate/pilot. The implementation boundary is approved, but enterprise GA remains blocked by the concrete evidence gates in [Compatibility](COMPATIBILITY.md) and [Enterprise readiness](ENTERPRISE-READINESS.md).
+Version 1.3.0 is an enterprise candidate/pilot. The implementation boundary is approved, but enterprise GA remains blocked by the concrete evidence gates in [Compatibility](COMPATIBILITY.md) and [Enterprise readiness](ENTERPRISE-READINESS.md).

@@ -4,7 +4,7 @@
 
 | Concern | Baseline |
 |---|---|
-| Release classification | `1.2.1` enterprise candidate/pilot |
+| Release classification | `1.3.0` enterprise candidate/pilot |
 | Target SonarQube Community Build | `26.6.0.123539` |
 | Plugin API compile/minimum | `13.7.0.4381` |
 | Java bytecode | 11 |
@@ -14,7 +14,7 @@
 
 This artifact targets the exact deployed 26.6 instance. It is not advertised as compatible across untested SonarQube or Plugin API major versions.
 
-## Target deployment evidence — 2026-08-18
+## Historical v1.2.1 target deployment evidence — 2026-08-18
 
 | Check | Result |
 |---|---|
@@ -64,6 +64,23 @@ The installation path and rollback locations are intentionally retained in the p
 | Approved SBOM, signing/provenance, support, and vulnerability process | Pending |
 
 Until these close, publish this build as a controlled candidate/pilot, not enterprise GA.
+
+## v1.3.0 automated release evidence
+
+- Browser/export tests: 31/31 pass, including timeout, cancellation, bounded
+  retry, pagination-window, branch-scope, Unicode, ZIP-budget, and lifecycle
+  consistency coverage.
+- Java page-registration test: 1/1 passes.
+- The Maven Wrapper verifies Maven 3.9.16; Maven Enforcer requires Maven 3.9+
+  and JDK 17+ while emitted plugin bytecode remains Java 11.
+- The build verifies the generated browser bundle and required JAR contents and
+  emits a validated CycloneDX 1.6 JSON SBOM.
+- GitHub Actions use immutable commit revisions and the workflows pass
+  `actionlint` 1.7.12.
+
+These automated results do not replace live qualification of the exact tagged
+artifact. The historical deployment table and digests above apply only to
+v1.2.1; v1.3.0 must receive its own deployment record before pilot promotion.
 
 ## API and upgrade policy
 

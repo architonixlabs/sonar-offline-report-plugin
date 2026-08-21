@@ -58,7 +58,7 @@
   }
 
   function activeIssue(issue) {
-    return app.issueLifecycleStatus(issue.status) === "actionable";
+    return app.issueLifecycle(issue) === "actionable";
   }
 
   function risk(issue) {
@@ -218,7 +218,7 @@
       "docProps/core.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${title}</dc:title><dc:subject>SonarQube offline quality report</dc:subject><dc:creator>SonarQube Offline Report Plugin</dc:creator><dc:description>Portable report for ${project}</dc:description><dcterms:created xsi:type="dcterms:W3CDTF">${created}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${created}</dcterms:modified></cp:coreProperties>`,
       "docProps/app.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>SonarQube Offline Report Plugin</Application><AppVersion>1.0</AppVersion></Properties>`
     };
-    const packageBytes = app.zipStore(files);
+    const packageBytes = app.zipStore(files, MAX_DOCX_BYTES);
     if (packageBytes.byteLength > MAX_DOCX_BYTES) {
       throw new Error(`The Word package exceeds the ${Math.round(MAX_DOCX_BYTES / 1024 / 1024)} MiB safety limit. Reduce the issue scope or use Excel.`);
     }

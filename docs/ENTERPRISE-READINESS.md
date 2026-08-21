@@ -2,7 +2,7 @@
 
 ## Decision
 
-Version 1.2.1 is an **enterprise candidate for controlled pilot use only**. It
+Version 1.3.0 is an **enterprise candidate for controlled pilot use only**. It
 must not be represented as enterprise general availability, compliance
 certified, or suitable for unattended regulated reporting until every GA
 blocker below is closed and approved by the accountable security, privacy,
@@ -27,7 +27,7 @@ links, exceptions, and rollback result for each promoted artifact.
 
 ## Mandatory GA gates
 
-| Gate | Required evidence | 1.2.1 status |
+| Gate | Required evidence | 1.3.0 status |
 |---|---|---|
 | HTTPS and authentication | Supported TLS reverse-proxy configuration; HSTS and secure-cookie review; no production plain HTTP | **Open — GA blocker** |
 | Permission and isolation matrix | Real target-server tests for Browse/no-Browse, private projects, cross-project key tampering, anonymous/public policy, and expired/revoked sessions; no existence or data leak | **Open — GA blocker** |
@@ -84,11 +84,14 @@ These are release requirements, even when an individual check is automated.
   taxonomy; unknown values remain visibly unknown.
 - Ignored quality-gate conditions, threshold kind, new-code period, timezone,
   and duration units have consistent cross-format definitions.
-- Paging uses deterministic ordering, deduplication, count reconciliation and
-  mutation detection. Limit breaches cannot be presented as complete.
-- Requests have bounded retries, `Retry-After` handling, an actual timeout, and
-  cancellation of in-flight work. Export generation has a mutex, memory/size
-  preflight, cleanup, and recoverable failure state.
+- Paging uses an explicit best-effort sort, deduplication, count reconciliation
+  and mutation indicators. Limit breaches cannot be presented as complete;
+  equal-sort-key concurrent mutation remains a documented non-transactional risk.
+- Requests have bounded retries, bounded `Retry-After` handling, an actual local
+  timeout, and prompt local cancellation. Transport-level abort remains a GA
+  evidence gate because the supported `SonarRequest.getJSON` contract does not
+  expose an abort signal. Export generation has bounded package construction,
+  cleanup, and recoverable failure state.
 
 ## Required automated and manual evidence
 
