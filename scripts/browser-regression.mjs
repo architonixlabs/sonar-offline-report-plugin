@@ -106,6 +106,7 @@ function launchChrome(executable, profileDirectory) {
     "--window-size=1440,1000",
     "about:blank"
   ];
+  if (process.platform === "linux") args.unshift("--disable-dev-shm-usage");
   if (process.platform === "linux" && typeof process.getuid === "function" && process.getuid() === 0) {
     args.unshift("--no-sandbox");
   }
@@ -133,12 +134,13 @@ function launchChrome(executable, profileDirectory) {
       resolveListening(match[1]);
     });
   });
-  return { browser, listening };
+  return { browser, listening, getDiagnostics: () => diagnostics };
 }
 
 class CdpClient {
-  constructor(url) {
+  constructor(url, closeDetails = () => "") {
     this.url = url;
+    this.closeDetails = closeDetails;
     this.sequence = 0;
     this.pending = new Map();
     this.events = [];
@@ -149,7 +151,12 @@ class CdpClient {
     this.socket = new WebSocket(this.url);
     this.socket.addEventListener("message", (event) => this.handleMessage(event.data));
     this.socket.addEventListener("close", () => {
-      for (const request of this.pending.values()) request.reject(new Error("Chrome DevTools connection closed."));
+      const details = String(this.closeDetails() || "").trim();
+      const message = details ? `Chrome DevTools connection closed. ${details}` : "Chrome DevTools connection closed.";
+      for (const request of this.pending.values()) {
+        clearTimeout(request.timeout);
+        request.reject(new Error(message));
+      }
       this.pending.clear();
     });
     await new Promise((resolveOpen, rejectOpen) => {
@@ -195,7 +202,7 @@ class CdpClient {
   }
 }
 
-async function connectToPage(browserWebSocketUrl) {
+async function connectToPage(browserWebSocketUrl, closeDetails) {
   const browserUrl = new URL(browserWebSocketUrl);
   const targetBase = `http://${browserUrl.host}`;
   let targets = [];
@@ -210,7 +217,7 @@ async function connectToPage(browserWebSocketUrl) {
   }
   const target = targets.find((item) => item.type === "page");
   if (!target || !target.webSocketDebuggerUrl) throw new Error("Chrome exposed no debuggable page target.");
-  const client = new CdpClient(target.webSocketDebuggerUrl);
+  const client = new CdpClient(target.webSocketDebuggerUrl, closeDetails);
   await client.open();
   return client;
 }
@@ -837,15 +844,27 @@ async function main() {
     cspAndOffline: null,
     checks: []
   };
-  const profileDirectory = await mkdtemp(join(tmpdir(), "offline-report-browser-"));
+  const profileDirectories = [];
   let launched;
   let client;
-  try {
-    const fixtureData = await generateFixtures();
-    const chrome = await findChrome();
+  let chrome;
+  const browserProcessDetails = () => {
+    if (!launched) return null;
+    return {
+      exitCode: launched.browser.exitCode,
+      signalCode: launched.browser.signalCode,
+      diagnostics: launched.getDiagnostics().slice(-4000)
+    };
+  };
+  const startSession = async () => {
+    const profileDirectory = await mkdtemp(join(tmpdir(), "offline-report-browser-"));
+    profileDirectories.push(profileDirectory);
     launched = launchChrome(chrome, profileDirectory);
     const browserWebSocketUrl = await launched.listening;
-    client = await connectToPage(browserWebSocketUrl);
+    client = await connectToPage(browserWebSocketUrl, () => {
+      const process = browserProcessDetails();
+      return process ? `Chrome exit=${process.exitCode ?? "running"}, signal=${process.signalCode ?? "none"}. ${process.diagnostics}` : "";
+    });
     await client.send("Page.enable");
     await client.send("Runtime.enable");
     await client.send("Log.enable");
@@ -858,7 +877,29 @@ async function main() {
       uploadThroughput: 0,
       connectionType: "none"
     });
-    const browserVersion = await client.send("Browser.getVersion");
+    return client.send("Browser.getVersion");
+  };
+  const stopSession = async () => {
+    const activeClient = client;
+    const activeLaunch = launched;
+    client = null;
+    launched = null;
+    if (activeClient) {
+      await activeClient.send("Browser.close").catch(() => {});
+      activeClient.close();
+    }
+    if (activeLaunch && activeLaunch.browser.exitCode === null) {
+      await Promise.race([
+        new Promise((resolveExit) => activeLaunch.browser.once("exit", resolveExit)),
+        delay(3000)
+      ]);
+      if (activeLaunch.browser.exitCode === null) activeLaunch.browser.kill();
+    }
+  };
+  try {
+    const fixtureData = await generateFixtures();
+    chrome = await findChrome();
+    const browserVersion = await startSession();
     evidence.browser = {
       product: browserVersion.product,
       protocolVersion: browserVersion.protocolVersion,
@@ -874,10 +915,17 @@ async function main() {
       evidence.profiles.push(profileEvidence);
     }
 
+    await stopSession();
+    await startSession();
     const issuesFixture = fixtureData.fixtures.find((fixture) => fixture.id === "issues");
     evidence.print = await exercisePrint(client, issuesFixture, fixtureData.actionableCount, evidence);
     evidence.cspAndOffline = await exerciseCspAndOffline(client, evidence);
-    evidence.portfolioPrint = await exercisePortfolioPrintScopes(client, fixtureData.portfolioPrintFixtures, evidence);
+    evidence.portfolioPrint = {};
+    for (const fixture of fixtureData.portfolioPrintFixtures) {
+      await stopSession();
+      await startSession();
+      Object.assign(evidence.portfolioPrint, await exercisePortfolioPrintScopes(client, [fixture], evidence));
+    }
     evidence.summary = {
       passed: evidence.checks.filter((check) => check.passed).length,
       failed: evidence.checks.filter((check) => !check.passed).length,
@@ -889,7 +937,7 @@ async function main() {
     console.log(`Browser regression passed: ${evidence.summary.passed} checks, ${evidence.summary.personas} personas, ${evidence.summary.screenshots} deterministic screenshots.`);
     console.log(`Evidence: ${join(ARTIFACT_ROOT, "evidence.json")}`);
   } catch (error) {
-    evidence.failure = { name: error.name, message: error.message };
+    evidence.failure = { name: error.name, message: error.message, browserProcess: browserProcessDetails() };
     evidence.summary = {
       passed: evidence.checks.filter((check) => check.passed).length,
       failed: evidence.checks.filter((check) => !check.passed).length + 1
@@ -897,18 +945,8 @@ async function main() {
     await writeFile(join(ARTIFACT_ROOT, "evidence.json"), `${JSON.stringify(evidence, null, 2)}\n`, "utf8").catch(() => {});
     throw error;
   } finally {
-    if (client) {
-      await client.send("Browser.close").catch(() => {});
-      client.close();
-    }
-    if (launched && launched.browser.exitCode === null) {
-      await Promise.race([
-        new Promise((resolveExit) => launched.browser.once("exit", resolveExit)),
-        delay(3000)
-      ]);
-      if (launched.browser.exitCode === null) launched.browser.kill();
-    }
-    await rm(profileDirectory, { recursive: true, force: true }).catch(() => {});
+    await stopSession();
+    await Promise.all(profileDirectories.map((profileDirectory) => rm(profileDirectory, { recursive: true, force: true }).catch(() => {})));
   }
 }
 
