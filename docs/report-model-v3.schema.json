@@ -1,0 +1,837 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/architonixlabs/sonar-offline-report-plugin/main/docs/report-model-v3.schema.json",
+  "title": "SonarQube Offline Report Model v3 artifact envelope",
+  "description": "The immutable, artifact-ready Model v3 report returned by createArtifactReport. JSON downloads wrap this report separately with a derived manifest.",
+  "$comment": "readOnly is an annotation. Runtime immutability is provided by the collector/UI freeze boundary. Cross-field equality and reconciliation invariants are documented here and verified by contract tests because standard JSON Schema cannot express them.",
+  "type": "object",
+  "readOnly": true,
+  "unevaluatedProperties": false,
+  "x-crossFieldInvariants": [
+    "generatedAt equals exportedAt and artifact.exportedAt",
+    "collectionComplete equals artifact.collectionComplete",
+    "artifactComplete equals artifact.artifactComplete",
+    "artifact.exportedCounts equals the rows or observations represented by the full-model artifact",
+    "collectionEvidence.reportId equals reportId",
+    "derived.issueSummary lifecycle counts reconcile to totalCollected",
+    "portfolio outcome counts reconcile to projectsSelected and aggregateIssueSummary"
+  ],
+  "oneOf": [
+    { "$ref": "#/$defs/singleReport" },
+    { "$ref": "#/$defs/portfolioReport" }
+  ],
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "nullableSha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "nonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nullableNumber": {
+      "type": ["number", "null"]
+    },
+    "datasetKey": {
+      "type": "string",
+      "enum": ["issues", "components", "analyses", "trends", "people"]
+    },
+    "datasetStateName": {
+      "type": "string",
+      "enum": ["complete", "partial_limit", "partial_error", "permission_denied", "not_available", "not_requested"]
+    },
+    "datasetState": {
+      "type": "object",
+      "required": ["requested", "state"],
+      "properties": {
+        "requested": { "type": "boolean" },
+        "state": { "$ref": "#/$defs/datasetStateName" },
+        "reason": { "type": "string" },
+        "httpStatus": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "expected": { "$ref": "#/$defs/nullableNumber" },
+        "exported": { "$ref": "#/$defs/nullableNumber" },
+        "limit": { "$ref": "#/$defs/nullableNumber" },
+        "rawFetched": { "$ref": "#/$defs/nullableNumber" },
+        "uniqueFetched": { "$ref": "#/$defs/nullableNumber" },
+        "duplicates": { "$ref": "#/$defs/nullableNumber" },
+        "duplicatesRemoved": { "$ref": "#/$defs/nullableNumber" },
+        "pagesFetched": { "$ref": "#/$defs/nullableNumber" },
+        "reconciled": { "type": ["boolean", "null"] },
+        "truncated": { "type": "boolean" },
+        "terminationReason": { "type": "string" },
+        "method": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "paging": {
+      "type": "object",
+      "required": ["expected", "exported", "limit"],
+      "properties": {
+        "expected": { "$ref": "#/$defs/nullableNumber" },
+        "exported": { "$ref": "#/$defs/nonNegativeInteger" },
+        "limit": { "$ref": "#/$defs/nonNegativeInteger" },
+        "rawFetched": { "$ref": "#/$defs/nonNegativeInteger" },
+        "uniqueFetched": { "$ref": "#/$defs/nonNegativeInteger" },
+        "duplicates": { "$ref": "#/$defs/nonNegativeInteger" },
+        "duplicatesRemoved": { "$ref": "#/$defs/nonNegativeInteger" },
+        "pagesFetched": { "$ref": "#/$defs/nonNegativeInteger" },
+        "pageSize": { "$ref": "#/$defs/nonNegativeInteger" },
+        "reconciled": { "type": ["boolean", "null"] },
+        "truncated": { "type": "boolean" },
+        "terminationReason": { "type": "string" },
+        "reconciliation": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "artifactCounts": {
+      "type": "object",
+      "required": ["projects", "issues", "components", "analyses", "trendObservations"],
+      "properties": {
+        "projects": { "$ref": "#/$defs/nonNegativeInteger" },
+        "issues": { "$ref": "#/$defs/nonNegativeInteger" },
+        "components": { "$ref": "#/$defs/nonNegativeInteger" },
+        "analyses": { "$ref": "#/$defs/nonNegativeInteger" },
+        "trendObservations": { "$ref": "#/$defs/nonNegativeInteger" }
+      },
+      "additionalProperties": false
+    },
+    "representationByDataset": {
+      "type": "object",
+      "properties": {
+        "issues": { "type": "string", "maxLength": 80 },
+        "components": { "type": "string", "maxLength": 80 },
+        "analyses": { "type": "string", "maxLength": 80 },
+        "trends": { "type": "string", "maxLength": 80 },
+        "people": { "type": "string", "maxLength": 80 }
+      },
+      "additionalProperties": false
+    },
+    "artifactScope": {
+      "type": "object",
+      "required": ["fullModel", "requiredDatasets", "representedDatasets", "excludedDatasets", "representationByDataset"],
+      "properties": {
+        "fullModel": { "type": "boolean" },
+        "requiredDatasets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/datasetKey" },
+          "maxItems": 5,
+          "uniqueItems": true
+        },
+        "representedDatasets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/datasetKey" },
+          "maxItems": 5,
+          "uniqueItems": true
+        },
+        "excludedDatasets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/datasetKey" },
+          "maxItems": 5,
+          "uniqueItems": true
+        },
+        "representationByDataset": { "$ref": "#/$defs/representationByDataset" },
+        "exclusionReason": { "type": "string", "maxLength": 240 }
+      },
+      "additionalProperties": true
+    },
+    "artifact": {
+      "type": "object",
+      "readOnly": true,
+      "required": [
+        "format", "purpose", "mode", "issueScope", "exportedAt", "collectionComplete",
+        "artifactComplete", "exportedCounts", "warnings", "scope", "artifactDigest", "artifactDigestState"
+      ],
+      "properties": {
+        "format": { "type": "string", "enum": ["html", "xlsx", "docx", "print", "csv", "json"] },
+        "purpose": { "$ref": "#/$defs/nonEmptyString" },
+        "mode": { "$ref": "#/$defs/nonEmptyString" },
+        "issueScope": { "$ref": "#/$defs/nonEmptyString" },
+        "exportedAt": { "$ref": "#/$defs/dateTime" },
+        "collectionComplete": { "type": "boolean" },
+        "artifactComplete": { "type": "boolean" },
+        "exportedCounts": { "$ref": "#/$defs/artifactCounts" },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "scope": { "$ref": "#/$defs/artifactScope" },
+        "artifactDigest": {
+          "type": "null",
+          "$comment": "Model v3 does not compute a digest for the generated report artifact. This null value must not be presented as tamper evidence."
+        },
+        "artifactDigestState": { "const": "not_computed" }
+      },
+      "additionalProperties": false
+    },
+    "measurePeriod": {
+      "type": "object",
+      "properties": {
+        "index": { "type": ["integer", "null"] },
+        "value": { "type": ["string", "number", "null"] },
+        "bestValue": { "type": ["boolean", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "measure": {
+      "type": "object",
+      "required": ["metric"],
+      "properties": {
+        "metric": { "$ref": "#/$defs/nonEmptyString" },
+        "value": { "type": ["string", "number", "null"] },
+        "bestValue": { "type": "boolean" },
+        "period": { "$ref": "#/$defs/measurePeriod" }
+      },
+      "additionalProperties": true
+    },
+    "qualityGateCondition": {
+      "type": "object",
+      "required": ["status", "metricKey"],
+      "properties": {
+        "status": { "$ref": "#/$defs/nonEmptyString" },
+        "metricKey": { "$ref": "#/$defs/nonEmptyString" },
+        "comparator": { "type": "string" },
+        "actualValue": { "type": ["string", "number", "null"] },
+        "errorThreshold": { "type": ["string", "number", "null"] },
+        "warningThreshold": { "type": ["string", "number", "null"] },
+        "periodIndex": { "type": "integer" }
+      },
+      "additionalProperties": true
+    },
+    "qualityGate": {
+      "type": "object",
+      "required": ["status", "conditions", "ignoredConditions"],
+      "properties": {
+        "status": { "$ref": "#/$defs/nonEmptyString" },
+        "conditions": { "type": "array", "items": { "$ref": "#/$defs/qualityGateCondition" } },
+        "ignoredConditions": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "projectIdentity": {
+      "type": "object",
+      "required": ["key", "name", "qualifier"],
+      "properties": {
+        "key": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "qualifier": { "$ref": "#/$defs/nonEmptyString" },
+        "version": { "type": "string" },
+        "analysisDate": { "type": "string" },
+        "branch": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "issue": {
+      "type": "object",
+      "required": [
+        "key", "rule", "type", "severity", "impacts", "status", "issueStatus", "legacyStatus",
+        "lifecycleStatus", "resolution", "message", "component", "project", "line", "textRange",
+        "effort", "assignee", "author", "tags", "creationDate", "updateDate", "closeDate",
+        "cleanCodeAttribute", "normalizedLifecycle", "softwareQualities", "impactSeverities",
+        "ageDays", "ageBucket", "effortMinutes", "language"
+      ],
+      "properties": {
+        "key": { "$ref": "#/$defs/nonEmptyString" },
+        "rule": { "type": "string" },
+        "type": { "type": "string" },
+        "severity": { "type": "string" },
+        "impacts": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string" },
+        "issueStatus": { "type": "string" },
+        "legacyStatus": { "type": "string" },
+        "lifecycleStatus": { "type": "string", "enum": ["actionable", "accepted", "closed", "unknown"] },
+        "resolution": { "type": "string" },
+        "message": { "type": "string" },
+        "component": { "type": "string" },
+        "project": { "type": "string" },
+        "line": { "type": "string" },
+        "textRange": { "type": ["object", "null"] },
+        "effort": { "type": "string" },
+        "assignee": { "type": "string" },
+        "author": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "creationDate": { "type": "string" },
+        "updateDate": { "type": "string" },
+        "closeDate": { "type": "string" },
+        "cleanCodeAttribute": { "type": "string" },
+        "normalizedLifecycle": { "type": "string", "enum": ["actionable", "accepted", "closed", "unknown"] },
+        "softwareQualities": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["Security", "Reliability", "Maintainability", "Unknown"] },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "impactSeverities": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["Blocker", "Critical", "High", "Major", "Medium", "Minor", "Low", "Info", "Unknown"] },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "ageDays": { "type": ["integer", "null"], "minimum": 0 },
+        "ageBucket": {
+          "type": "string",
+          "enum": ["0–7 days", "8–30 days", "31–90 days", "91–180 days", "181–365 days", ">365 days", "Unknown age"]
+        },
+        "effortMinutes": { "type": ["number", "null"], "minimum": 0 },
+        "language": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "rule": {
+      "type": "object",
+      "required": ["key"],
+      "properties": {
+        "key": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "type": "string" },
+        "lang": { "type": "string" },
+        "langName": { "type": "string" },
+        "status": { "type": "string" },
+        "type": { "type": "string" },
+        "severity": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "component": {
+      "type": "object",
+      "required": ["key", "name", "path", "qualifier", "language", "measures"],
+      "properties": {
+        "key": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "type": "string" },
+        "path": { "type": "string" },
+        "qualifier": { "type": "string" },
+        "language": { "type": "string" },
+        "measures": { "type": "array", "items": { "$ref": "#/$defs/measure" } }
+      },
+      "additionalProperties": true
+    },
+    "analysisEvent": {
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "category": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "analysis": {
+      "type": "object",
+      "required": ["key", "date", "projectVersion", "revision", "events"],
+      "properties": {
+        "key": { "$ref": "#/$defs/nonEmptyString" },
+        "date": { "type": "string" },
+        "projectVersion": { "type": "string" },
+        "revision": { "type": "string" },
+        "events": { "type": "array", "items": { "$ref": "#/$defs/analysisEvent" } }
+      },
+      "additionalProperties": false
+    },
+    "trendObservation": {
+      "type": "object",
+      "required": ["date", "value"],
+      "properties": {
+        "date": { "type": "string" },
+        "value": { "type": ["number", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "trendSeries": {
+      "type": "object",
+      "required": ["metric", "observations", "current", "previous", "absoluteChange", "percentageChange", "period", "source"],
+      "properties": {
+        "metric": { "$ref": "#/$defs/nonEmptyString" },
+        "observations": { "type": "array", "items": { "$ref": "#/$defs/trendObservation" } },
+        "current": { "type": ["object", "null"] },
+        "previous": { "type": ["object", "null"] },
+        "absoluteChange": { "$ref": "#/$defs/nullableNumber" },
+        "percentageChange": { "$ref": "#/$defs/nullableNumber" },
+        "period": { "type": ["object", "null"] },
+        "source": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "additionalProperties": false
+    },
+    "countBucket": {
+      "type": "object",
+      "required": ["label", "count"],
+      "properties": {
+        "label": { "type": "string" },
+        "count": { "$ref": "#/$defs/nonNegativeInteger" }
+      },
+      "additionalProperties": false
+    },
+    "issueSummary": {
+      "type": "object",
+      "required": ["totalCollected", "expected", "unique", "duplicates", "actionable", "accepted", "closed", "unknown"],
+      "properties": {
+        "totalCollected": { "$ref": "#/$defs/nonNegativeInteger" },
+        "expected": { "type": ["integer", "null"], "minimum": 0 },
+        "unique": { "$ref": "#/$defs/nonNegativeInteger" },
+        "duplicates": { "$ref": "#/$defs/nonNegativeInteger" },
+        "actionable": { "$ref": "#/$defs/nonNegativeInteger" },
+        "accepted": { "$ref": "#/$defs/nonNegativeInteger" },
+        "closed": { "$ref": "#/$defs/nonNegativeInteger" },
+        "unknown": { "$ref": "#/$defs/nonNegativeInteger" }
+      },
+      "additionalProperties": false
+    },
+    "statusModel": {
+      "type": "object",
+      "required": [
+        "qualityGate", "security", "reliability", "maintainability", "coverage", "duplication",
+        "technicalDebtMinutes", "securityHotspots", "reviewedSecurityHotspotsPercent",
+        "unreviewedSecurityHotspots", "actionableIssues", "newCodeCondition", "analysisAgeDays", "reportCompleteness"
+      ],
+      "properties": {
+        "qualityGate": { "type": "string" },
+        "security": { "type": ["string", "null"], "enum": ["A", "B", "C", "D", "E", null] },
+        "reliability": { "type": ["string", "null"], "enum": ["A", "B", "C", "D", "E", null] },
+        "maintainability": { "type": ["string", "null"], "enum": ["A", "B", "C", "D", "E", null] },
+        "coverage": { "$ref": "#/$defs/nullableNumber" },
+        "duplication": { "$ref": "#/$defs/nullableNumber" },
+        "technicalDebtMinutes": { "$ref": "#/$defs/nullableNumber" },
+        "securityHotspots": { "$ref": "#/$defs/nullableNumber" },
+        "reviewedSecurityHotspotsPercent": { "$ref": "#/$defs/nullableNumber" },
+        "unreviewedSecurityHotspots": { "type": ["integer", "null"], "minimum": 0 },
+        "actionableIssues": { "$ref": "#/$defs/nonNegativeInteger" },
+        "newCodeCondition": { "type": "string", "enum": ["available", "not_available"] },
+        "analysisAgeDays": { "type": ["integer", "null"], "minimum": 0 },
+        "reportCompleteness": { "type": "string", "enum": ["complete", "partial"] }
+      },
+      "additionalProperties": false
+    },
+    "derived": {
+      "type": "object",
+      "required": [
+        "formulaVersion", "collectionDurationMs", "analysisAgeDays", "issueSummary", "issueBreakdowns",
+        "effort", "riskConcentrations", "qualityGateFailureReasons", "reconciliation", "statusModel"
+      ],
+      "properties": {
+        "formulaVersion": { "const": 1 },
+        "collectionDurationMs": { "type": ["number", "null"], "minimum": 0 },
+        "analysisAgeDays": { "type": ["integer", "null"], "minimum": 0 },
+        "issueSummary": { "$ref": "#/$defs/issueSummary" },
+        "issueBreakdowns": {
+          "type": "object",
+          "required": ["lifecycle", "softwareQuality", "impactSeverity", "legacyType", "rawStatus", "age", "language", "tags"],
+          "properties": {
+            "lifecycle": { "type": "array", "items": { "$ref": "#/$defs/countBucket" } },
+            "softwareQuality": { "type": "array", "items": { "$ref": "#/$defs/countBucket" } },
+            "impactSeverity": { "type": "array", "items": { "$ref": "#/$defs/countBucket" } },
+            "legacyType": { "type": "array", "items": { "$ref": "#/$defs/countBucket" } },
+            "rawStatus": { "type": "array", "items": { "$ref": "#/$defs/countBucket" } },
+            "age": { "type": "array", "items": { "$ref": "#/$defs/countBucket" } },
+            "language": { "type": "array", "items": { "$ref": "#/$defs/countBucket" } },
+            "tags": { "type": "array", "items": { "$ref": "#/$defs/countBucket" } }
+          },
+          "additionalProperties": false
+        },
+        "effort": {
+          "type": "object",
+          "required": ["knownMinutes", "issuesWithKnownEffort", "issuesWithUnknownEffort"],
+          "properties": {
+            "knownMinutes": { "type": "number", "minimum": 0 },
+            "issuesWithKnownEffort": { "$ref": "#/$defs/nonNegativeInteger" },
+            "issuesWithUnknownEffort": { "$ref": "#/$defs/nonNegativeInteger" }
+          },
+          "additionalProperties": false
+        },
+        "riskConcentrations": {
+          "type": "object",
+          "required": ["topRules", "topComponents", "oldestActionable", "highestEffort"],
+          "properties": {
+            "topRules": { "type": "array", "items": { "type": "object" } },
+            "topComponents": { "type": "array", "items": { "type": "object" } },
+            "oldestActionable": { "type": "array", "items": { "type": "object" } },
+            "highestEffort": { "type": "array", "items": { "type": "object" } }
+          },
+          "additionalProperties": false
+        },
+        "qualityGateFailureReasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["metric", "status", "comparator", "context"],
+            "properties": {
+              "metric": { "type": "string" },
+              "status": { "type": "string" },
+              "comparator": { "type": "string" },
+              "threshold": { "type": ["string", "number", "null"] },
+              "actual": { "type": ["string", "number", "null"] },
+              "context": { "type": "string", "enum": ["new_code", "overall_or_server_defined"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "reconciliation": {
+          "type": "object",
+          "required": ["lifecycleReconciles", "exportedNotAboveCollected", "collectedNotAboveExpected", "valid"],
+          "properties": {
+            "lifecycleReconciles": { "type": "boolean" },
+            "exportedNotAboveCollected": { "type": "boolean" },
+            "collectedNotAboveExpected": { "type": "boolean" },
+            "valid": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "statusModel": { "$ref": "#/$defs/statusModel" }
+      },
+      "additionalProperties": false
+    },
+    "datasetEvidence": {
+      "type": "object",
+      "required": [
+        "dataset", "requested", "state", "reason", "expected", "retrieved", "unique", "exported",
+        "duplicates", "pages", "limit", "terminationReason", "reconciled"
+      ],
+      "properties": {
+        "dataset": { "type": "string", "enum": ["Issues", "Components", "Analyses", "Historical metrics"] },
+        "requested": { "type": "boolean" },
+        "state": { "$ref": "#/$defs/datasetStateName" },
+        "reason": { "type": "string" },
+        "expected": { "$ref": "#/$defs/nullableNumber" },
+        "retrieved": { "$ref": "#/$defs/nullableNumber" },
+        "unique": { "$ref": "#/$defs/nullableNumber" },
+        "exported": { "$ref": "#/$defs/nullableNumber" },
+        "duplicates": { "$ref": "#/$defs/nullableNumber" },
+        "pages": { "$ref": "#/$defs/nullableNumber" },
+        "limit": { "$ref": "#/$defs/nullableNumber" },
+        "terminationReason": { "type": "string" },
+        "reconciled": { "type": ["boolean", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "collectionEvidence": {
+      "type": "object",
+      "required": [
+        "reportId", "pluginVersion", "modelVersion", "rendererVersion", "serverVersion", "projectKey",
+        "branch", "collectionStartedAt", "collectionCompletedAt", "snapshotConsistent", "datasets", "warnings"
+      ],
+      "properties": {
+        "reportId": { "type": "string" },
+        "pluginVersion": { "type": "string" },
+        "modelVersion": { "const": 3 },
+        "rendererVersion": { "type": "integer", "minimum": 1 },
+        "serverVersion": { "type": "string" },
+        "projectKey": { "type": "string" },
+        "branch": { "type": "string" },
+        "collectionStartedAt": { "$ref": "#/$defs/dateTime" },
+        "collectionCompletedAt": { "$ref": "#/$defs/dateTime" },
+        "snapshotConsistent": { "type": ["boolean", "null"] },
+        "datasets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/datasetEvidence" },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "commonEnvelope": {
+      "type": "object",
+      "readOnly": true,
+      "required": [
+        "schemaVersion", "modelVersion", "rendererVersion", "pluginVersion", "reportId", "reportMode",
+        "generatedAt", "exportedAt", "collectedAt", "collectionStartedAt", "collectionCompletedAt",
+        "complete", "collectionComplete", "artifactComplete", "artifact", "serverBaseUrl",
+        "serverBaseUrlScope", "sourceRevision", "sourceDigest", "pluginArtifactDigest", "datasetStates", "warnings"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 3 },
+        "modelVersion": { "const": 3 },
+        "rendererVersion": { "type": "integer", "minimum": 1 },
+        "pluginVersion": { "$ref": "#/$defs/nonEmptyString" },
+        "reportId": { "type": "string", "format": "uuid" },
+        "reportMode": { "type": "string", "enum": ["single", "portfolio"] },
+        "generatedAt": { "$ref": "#/$defs/dateTime" },
+        "exportedAt": { "$ref": "#/$defs/dateTime" },
+        "collectedAt": { "$ref": "#/$defs/dateTime" },
+        "collectionStartedAt": { "$ref": "#/$defs/dateTime" },
+        "collectionCompletedAt": { "$ref": "#/$defs/dateTime" },
+        "complete": { "type": "boolean" },
+        "collectionComplete": { "type": "boolean" },
+        "artifactComplete": { "type": "boolean" },
+        "artifact": { "$ref": "#/$defs/artifact" },
+        "serverBaseUrl": { "type": ["string", "null"], "format": "uri" },
+        "serverBaseUrlScope": { "type": "string", "enum": ["unavailable", "origin_only", "origin_and_context_path"] },
+        "sourceRevision": { "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{7,64}$" },
+        "sourceDigest": { "$ref": "#/$defs/nullableSha256" },
+        "pluginArtifactDigest": { "$ref": "#/$defs/nullableSha256" },
+        "datasetStates": { "type": "object" },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "singleDatasetStates": {
+      "type": "object",
+      "required": ["serverMetadata", "measures", "qualityGate", "issues", "components", "analyses", "trends", "analysisSnapshot"],
+      "properties": {
+        "serverMetadata": { "$ref": "#/$defs/datasetState" },
+        "measures": { "$ref": "#/$defs/datasetState" },
+        "qualityGate": { "$ref": "#/$defs/datasetState" },
+        "issues": { "$ref": "#/$defs/datasetState" },
+        "components": { "$ref": "#/$defs/datasetState" },
+        "analyses": { "$ref": "#/$defs/datasetState" },
+        "trends": { "$ref": "#/$defs/datasetState" },
+        "people": { "$ref": "#/$defs/datasetState" },
+        "analysisSnapshot": { "$ref": "#/$defs/datasetState" }
+      },
+      "additionalProperties": false
+    },
+    "collectionScope": {
+      "type": "object",
+      "required": ["issues", "components", "analyses", "trends", "people"],
+      "properties": {
+        "issues": { "type": "boolean" },
+        "components": { "type": "boolean" },
+        "analyses": { "type": "boolean" },
+        "trends": { "type": "boolean" },
+        "people": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "singleReport": {
+      "allOf": [
+        { "$ref": "#/$defs/commonEnvelope" },
+        {
+          "type": "object",
+          "required": [
+            "serverVersion", "branchLabel", "collectionScope", "project", "analysisDateBeforeCollection",
+            "analysisDateAfterCollection", "analysisSnapshotConsistent", "analysisSnapshotMethod", "qualityGate",
+            "measures", "issues", "rules", "components", "analyses", "trends", "issuePaging",
+            "componentPaging", "analysisPaging", "trendPaging", "derived", "collectionEvidence"
+          ],
+          "properties": {
+            "reportMode": { "const": "single" },
+            "datasetStates": { "$ref": "#/$defs/singleDatasetStates" },
+            "serverVersion": { "type": "string" },
+            "branchLabel": { "$ref": "#/$defs/nonEmptyString" },
+            "collectionScope": { "$ref": "#/$defs/collectionScope" },
+            "project": { "$ref": "#/$defs/projectIdentity" },
+            "analysisDateBeforeCollection": { "type": "string" },
+            "analysisDateAfterCollection": { "type": "string" },
+            "analysisSnapshotConsistent": { "type": ["boolean", "null"] },
+            "analysisSnapshotMethod": { "$ref": "#/$defs/nonEmptyString" },
+            "qualityGate": { "$ref": "#/$defs/qualityGate" },
+            "measures": { "type": "array", "items": { "$ref": "#/$defs/measure" } },
+            "issues": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
+            "rules": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+            "components": { "type": "array", "items": { "$ref": "#/$defs/component" } },
+            "analyses": { "type": "array", "items": { "$ref": "#/$defs/analysis" } },
+            "trends": { "type": "array", "items": { "$ref": "#/$defs/trendSeries" } },
+            "issuePaging": { "$ref": "#/$defs/paging" },
+            "componentPaging": { "$ref": "#/$defs/paging" },
+            "analysisPaging": { "$ref": "#/$defs/paging" },
+            "trendPaging": { "$ref": "#/$defs/paging" },
+            "derived": { "$ref": "#/$defs/derived" },
+            "collectionEvidence": { "$ref": "#/$defs/collectionEvidence" }
+          }
+        }
+      ]
+    },
+    "portfolioProjectEntry": {
+      "type": "object",
+      "required": [
+        "projectIdentity", "collectionState", "collectionConfidence", "qualityGate", "measures", "issues",
+        "rules", "components", "analyses", "trends", "derived", "datasetStates", "collectionEvidence", "paging", "warnings"
+      ],
+      "properties": {
+        "projectIdentity": {
+          "allOf": [
+            { "$ref": "#/$defs/projectIdentity" },
+            { "type": "object", "required": ["branch"], "properties": { "branch": { "$ref": "#/$defs/nonEmptyString" } } }
+          ]
+        },
+        "collectionState": {
+          "type": "object",
+          "required": ["outcome", "complete"],
+          "properties": {
+            "outcome": { "type": "string", "enum": ["complete", "partial", "failed", "permission_denied", "skipped"] },
+            "complete": { "type": "boolean" },
+            "error": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "collectionConfidence": { "type": "string", "enum": ["complete", "partial", "failed", "permission_denied", "skipped"] },
+        "qualityGate": { "type": ["object", "null"] },
+        "measures": { "type": "array", "items": { "$ref": "#/$defs/measure" } },
+        "issues": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
+        "rules": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+        "components": { "type": "array", "items": { "$ref": "#/$defs/component" } },
+        "analyses": { "type": "array", "items": { "$ref": "#/$defs/analysis" } },
+        "trends": { "type": "array", "items": { "$ref": "#/$defs/trendSeries" } },
+        "derived": { "type": ["object", "null"] },
+        "datasetStates": { "type": "object" },
+        "collectionEvidence": { "type": ["object", "null"] },
+        "paging": { "type": "object" },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "portfolioSummary": {
+      "type": "object",
+      "required": [
+        "projectsSelected", "projectsAttempted", "projectsAnalysed", "projectsComplete", "projectsPartial",
+        "projectsFailed", "projectsPermissionDenied", "projectsSkipped", "qualityGateDistribution"
+      ],
+      "properties": {
+        "projectsSelected": { "$ref": "#/$defs/nonNegativeInteger" },
+        "projectsAttempted": { "$ref": "#/$defs/nonNegativeInteger" },
+        "projectsAnalysed": { "$ref": "#/$defs/nonNegativeInteger" },
+        "projectsComplete": { "$ref": "#/$defs/nonNegativeInteger" },
+        "projectsPartial": { "$ref": "#/$defs/nonNegativeInteger" },
+        "projectsFailed": { "$ref": "#/$defs/nonNegativeInteger" },
+        "projectsPermissionDenied": { "$ref": "#/$defs/nonNegativeInteger" },
+        "projectsSkipped": { "$ref": "#/$defs/nonNegativeInteger" },
+        "qualityGateDistribution": { "type": "array", "items": { "$ref": "#/$defs/countBucket" } }
+      },
+      "additionalProperties": false
+    },
+    "aggregateIssueSummary": {
+      "type": "object",
+      "required": ["totalCollected", "expected", "actionable", "accepted", "closed", "unknown", "reconciles"],
+      "properties": {
+        "totalCollected": { "$ref": "#/$defs/nonNegativeInteger" },
+        "expected": { "type": ["integer", "null"], "minimum": 0 },
+        "actionable": { "$ref": "#/$defs/nonNegativeInteger" },
+        "accepted": { "$ref": "#/$defs/nonNegativeInteger" },
+        "closed": { "$ref": "#/$defs/nonNegativeInteger" },
+        "unknown": { "$ref": "#/$defs/nonNegativeInteger" },
+        "reconciles": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "weightedAggregate": {
+      "type": "object",
+      "required": ["value", "numerator", "denominator", "projectsIncluded", "formula"],
+      "properties": {
+        "value": { "$ref": "#/$defs/nullableNumber" },
+        "numerator": { "type": "number", "minimum": 0 },
+        "denominator": { "type": "number", "minimum": 0 },
+        "projectsIncluded": { "$ref": "#/$defs/nonNegativeInteger" },
+        "formula": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "additionalProperties": false
+    },
+    "portfolioDatasetStates": {
+      "type": "object",
+      "required": ["projects"],
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["projectKey", "state"],
+            "properties": {
+              "projectKey": { "$ref": "#/$defs/nonEmptyString" },
+              "state": { "type": "string", "enum": ["complete", "partial", "failed", "permission_denied", "skipped"] }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "portfolioReport": {
+      "allOf": [
+        { "$ref": "#/$defs/commonEnvelope" },
+        {
+          "type": "object",
+          "required": [
+            "requestedScope", "actualScope", "portfolioSummary", "projects", "aggregateIssueSummary",
+            "aggregateRiskConcentrations", "aggregateMetrics", "collectionEvidence"
+          ],
+          "properties": {
+            "reportMode": { "const": "portfolio" },
+            "datasetStates": { "$ref": "#/$defs/portfolioDatasetStates" },
+            "requestedScope": {
+              "type": "object",
+              "required": ["projectKeys"],
+              "properties": {
+                "projectKeys": {
+                  "type": "array",
+                  "items": { "$ref": "#/$defs/nonEmptyString" },
+                  "minItems": 1,
+                  "maxItems": 50,
+                  "uniqueItems": true
+                }
+              },
+              "additionalProperties": true
+            },
+            "actualScope": {
+              "type": "object",
+              "required": ["projectKeys", "mainBranchOnly"],
+              "properties": {
+                "projectKeys": {
+                  "type": "array",
+                  "items": { "$ref": "#/$defs/nonEmptyString" },
+                  "maxItems": 50,
+                  "uniqueItems": true
+                },
+                "mainBranchOnly": { "const": true }
+              },
+              "additionalProperties": false
+            },
+            "portfolioSummary": { "$ref": "#/$defs/portfolioSummary" },
+            "projects": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/portfolioProjectEntry" },
+              "minItems": 1,
+              "maxItems": 50
+            },
+            "aggregateIssueSummary": { "$ref": "#/$defs/aggregateIssueSummary" },
+            "aggregateRiskConcentrations": {
+              "type": "object",
+              "required": [
+                "topProjectsByActionableIssues", "topProjectsBySecurityIssues", "topProjectsByReliabilityIssues",
+                "topProjectsByMaintainabilityIssues", "topProjectsByTechnicalDebt", "topProjectsWithFailedQualityGates",
+                "topRules", "topComponents", "oldestActionableIssues", "highestEffortIssues", "attentionOrder"
+              ],
+              "properties": {
+                "topProjectsByActionableIssues": { "type": "array", "items": { "type": "object" } },
+                "topProjectsBySecurityIssues": { "type": "array", "items": { "type": "object" } },
+                "topProjectsByReliabilityIssues": { "type": "array", "items": { "type": "object" } },
+                "topProjectsByMaintainabilityIssues": { "type": "array", "items": { "type": "object" } },
+                "topProjectsByTechnicalDebt": { "type": "array", "items": { "type": "object" } },
+                "topProjectsWithFailedQualityGates": { "type": "array", "items": { "type": "object" } },
+                "topRules": { "type": "array", "items": { "type": "object" } },
+                "topComponents": { "type": "array", "items": { "type": "object" } },
+                "oldestActionableIssues": { "type": "array", "items": { "type": "object" } },
+                "highestEffortIssues": { "type": "array", "items": { "type": "object" } },
+                "attentionOrder": { "type": "array", "items": { "type": "object" } }
+              },
+              "additionalProperties": false
+            },
+            "aggregateMetrics": {
+              "type": "object",
+              "required": ["coverage", "duplication", "technicalDebtMinutes", "technicalDebtProjectsIncluded"],
+              "properties": {
+                "coverage": { "$ref": "#/$defs/weightedAggregate" },
+                "duplication": { "$ref": "#/$defs/weightedAggregate" },
+                "technicalDebtMinutes": { "$ref": "#/$defs/nullableNumber" },
+                "technicalDebtProjectsIncluded": { "$ref": "#/$defs/nonNegativeInteger" }
+              },
+              "additionalProperties": false
+            },
+            "collectionEvidence": {
+              "type": "object",
+              "required": ["reportId", "selected", "attempted", "analysed", "projects", "warnings"],
+              "properties": {
+                "reportId": { "type": "string", "format": "uuid" },
+                "selected": { "$ref": "#/$defs/nonNegativeInteger" },
+                "attempted": { "$ref": "#/$defs/nonNegativeInteger" },
+                "analysed": { "$ref": "#/$defs/nonNegativeInteger" },
+                "projects": { "type": "array", "items": { "type": ["object", "null"] } },
+                "warnings": { "type": "array", "items": { "type": "string" } }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    }
+  }
+}

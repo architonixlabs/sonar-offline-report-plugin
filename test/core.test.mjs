@@ -14,12 +14,16 @@ test("template validation is declarative, bounded, and sanitized", async () => {
   const template = app.parseTemplateJson(JSON.stringify({
     schemaVersion: 1,
     title: " Test\u0000 title ",
+    persona: "Engineering lead",
+    requiredDatasets: ["issues", "trends", "not-a-dataset"],
     accentColor: "url(https://attacker.invalid)",
     sections: { issues: false },
     arbitraryScript: "alert(1)"
   }));
   assert.equal(template.title, "Test  title");
   assert.equal(template.accentColor, "#0f766e");
+  assert.equal(template.persona, "Engineering lead");
+  assert.deepEqual({ ...template.requiredDatasets }, { issues: true, components: false, analyses: false, trends: true, people: false });
   assert.equal(template.sections.issues, false);
   assert.equal("arbitraryScript" in template, false);
   assert.throws(() => app.parseTemplateJson(JSON.stringify({ schemaVersion: 99 })), /Unsupported/);
@@ -78,7 +82,11 @@ test("CSV issue exports use professional labels instead of raw Sonar enum tokens
   });
   const csv = app.toCsv(rows);
   assert.match(csv, /"Code Smell"/);
-  assert.match(csv, /"Maintainability – High"/);
+  assert.match(csv, /"Legacy Issue Type"/);
+  assert.match(csv, /"Code Smell"/);
+  assert.match(csv, /"Legacy Severity"/);
+  assert.match(csv, /"Major"/);
+  assert.match(csv, /"Normalized Lifecycle"/);
   assert.match(csv, /"False Positive"/);
   assert.match(csv, /"Won't Fix"/);
   assert.match(csv, /"Brain Overload"/);

@@ -48,11 +48,14 @@ jobs:
           import { readFileSync } from "node:fs";
 
           const packageVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
+          const packageLock = JSON.parse(readFileSync("package-lock.json", "utf8"));
           const pom = readFileSync("pom.xml", "utf8");
           const pomVersion = pom.match(/<artifactId>sonar-offline-report-plugin<\/artifactId>\s*<version>([^<]+)<\/version>/)?.[1];
-          const values = { packageVersion, pomVersion };
-          if (!pomVersion || new Set(Object.values(values)).size !== 1) {
+          const scmTag = pom.match(/<scm>[\s\S]*?<tag>([^<]+)<\/tag>[\s\S]*?<\/scm>/)?.[1];
+          const values = { packageVersion, packageLockVersion: packageLock.version, packageLockRootVersion: packageLock.packages?.[""]?.version, pomVersion };
+          if (!pomVersion || new Set(Object.values(values)).size !== 1 || scmTag !== `v${packageVersion}`) {
             console.error("Version mismatch:", values);
+            console.error("SCM tag:", scmTag);
             process.exit(1);
           }
           console.log(`Verified version ${packageVersion}`);
@@ -64,7 +67,7 @@ jobs:
       - name: Verify generated browser asset is current
         run: |
           npm run check
-          git diff --exit-code -- src/main/resources/static/report_page.js
+          git diff --exit-code -- src/main/resources/static/report_page.js src/main/resources/static/portfolio_page.js
 
       - name: Build and test plugin
         run: sh ./mvnw --batch-mode --no-transfer-progress clean verify
@@ -76,13 +79,37 @@ jobs:
           test -n "$jar_file"
           jar tf "$jar_file" | grep -Fx 'com/architonix/sonarqube/offlinereport/OfflineReportPlugin.class'
           jar tf "$jar_file" | grep -Fx 'static/report_page.js'
+          jar tf "$jar_file" | grep -Fx 'static/portfolio_page.js'
           jar tf "$jar_file" | grep -Fx 'META-INF/LICENSE'
           jar tf "$jar_file" | grep -Fx 'META-INF/NOTICE'
           test -s target/sonar-offline-report-plugin-*.cdx.json
 
+      - name: Verify exact packaged frontend provenance
+        run: node scripts/release-provenance.mjs
+
+      - name: Run real-browser persona regression
+        run: npm run test:browser
+
+      - name: Run bounded export benchmark
+        shell: bash
+        run: npm run benchmark | tee target/benchmark-results.log
+
+      - name: Retain browser and benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: validation-${{ github.sha }}
+          path: |
+            target/browser-regression
+            target/benchmark-results.log
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Record artifact digest
         shell: bash
-        run: sha256sum target/sonar-offline-report-plugin-*.jar target/sonar-offline-report-plugin-*.cdx.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          sha256sum "target/sonar-offline-report-plugin-${version}.jar" "target/sonar-offline-report-plugin-${version}.cdx.json"
 
       - name: Enterprise release reminder
         shell: bash

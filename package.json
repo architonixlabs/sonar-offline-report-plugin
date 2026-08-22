@@ -1,12 +1,16 @@
 {
   "name": "sonar-offline-report-plugin-ui",
-  "version": "1.3.0",
+  "version": "2.0.0",
   "private": true,
   "description": "Dependency-free browser UI and exporters for the SonarQube Offline Report plugin",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:provenance": "node scripts/build.mjs --provenance",
+    "build:release": "node scripts/build.mjs --provenance --require-clean",
+    "benchmark": "node --expose-gc scripts/benchmark.mjs",
     "check": "node scripts/build.mjs --check",
-    "test": "node scripts/build.mjs && node --test test/*.test.mjs"
+    "test": "node scripts/build.mjs && node --test test/*.test.mjs",
+    "test:browser": "node --experimental-websocket scripts/browser-regression.mjs"
   },
   "engines": {
     "node": ">=18"

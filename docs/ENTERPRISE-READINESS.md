@@ -2,7 +2,7 @@
 
 ## Decision
 
-Version 1.3.0 is an **enterprise candidate for controlled pilot use only**. It
+Version 2.0.0 is a **production-hardening release candidate for controlled pilot use only**. It
 must not be represented as enterprise general availability, compliance
 certified, or suitable for unattended regulated reporting until every GA
 blocker below is closed and approved by the accountable security, privacy,
@@ -12,6 +12,12 @@ The plugin remains thin: it uses the current browser session and public,
 same-origin SonarQube Web APIs, then generates files locally. It has no server
 report endpoint, service credential, database access, report repository, direct
 PDF generator, or arbitrary DOCX-template execution surface.
+
+The Model v3 implementation is **development GO only**. Controlled pilot is
+NO-GO until the global page, Browse-filtered inventory, mixed permissions,
+bounded 1/10/25/50-project load and cancellation are proven on the exact target
+server and supported browsers. It does not inherit historical single-project
+deployment evidence automatically.
 
 ## Release states
 
@@ -27,17 +33,18 @@ links, exceptions, and rollback result for each promoted artifact.
 
 ## Mandatory GA gates
 
-| Gate | Required evidence | 1.3.0 status |
+| Gate | Required evidence | 2.0.0 status |
 |---|---|---|
 | HTTPS and authentication | Supported TLS reverse-proxy configuration; HSTS and secure-cookie review; no production plain HTTP | **Open — GA blocker** |
 | Permission and isolation matrix | Real target-server tests for Browse/no-Browse, private projects, cross-project key tampering, anonymous/public policy, and expired/revoked sessions; no existence or data leak | **Open — GA blocker** |
-| Chromium and Firefox | End-to-end collection, stale-state, cancellation, CSP/no-network, navigation, filtering, download, and print tests on supported versions | **Open — GA blocker** |
+| Portfolio authorization and load | Global page for ordinary users; inventory exactly matches Browse; mixed denied/partial projects remain visible; 1/10/25/50-project load with one-to-four workers and server impact recorded | **Open — pilot and GA blocker** |
+| Chromium and Firefox | End-to-end collection, stale-state, cancellation, CSP/no-network, navigation, filtering, download, and print tests on supported versions | **Local Chrome renderer/reflow/CSP/print gate passes; authenticated target flow and Firefox remain open — GA blocker** |
 | Excel and LibreOffice | XLSX opens without repair; row/value/type round trip; adversarial strings never become formulas or links | **Open — GA blocker** |
 | Word and OpenXML | DOCX opens without repair in Word and LibreOffice; Open XML validation; fixed-part and relationship scan; malicious corpus and accessibility review | **Open — GA blocker** |
 | Large exports and API mutation | 0/1/501/9,999/10,000/10,001 cases, duplicate/changing pages, partial-data policy, browser memory/time budgets, abort and recovery | **Open — GA blocker** |
 | Accessibility | Automated checks plus keyboard, screen-reader, forced-colors, 320 CSS px/400% reflow and print review | **Open — GA blocker** |
-| Upgrade and rollback | Atomic install/upgrade, exactly one plugin JAR/key, startup smoke test, removal, and restore of the immediately previous verified artifact | **Open — GA blocker** |
-| Artifact signing and provenance | Approved signing identity, signature verification instructions, SHA-256 digest, source revision, clean-build provenance and release attestation | **Open — GA blocker** |
+| Upgrade and rollback | Atomic install/upgrade, exactly one plugin JAR/key, startup smoke test, removal, and restore of the immediately previous verified artifact | **Pass on the exact Linux Docker target: v2 upgrade, v1.3.0 restore, final v2 reinstall, one active JAR, restart count 0; formal production change approval remains operational** |
+| Artifact signing and provenance | Approved signing identity, signature verification instructions, SHA-256 digest, source revision, clean-build provenance, release attestation and repository protection against version-tag update/deletion | **Workflow implemented; exact-candidate attestation approval and administrator-owned `v*` tag protection remain open — GA blocker** |
 | SBOM and license approval | Machine-readable SBOM for shipped artifact, transitive inventory, vulnerability and license-policy review, LICENSE/NOTICE inclusion verified in source and JAR | **Open — GA blocker** |
 | Privacy and records management | Data classification, PII purpose, retention/deletion, approved transfer channels, DLP handling, and public-project export decision | **Open — GA blocker** |
 | Observability | Privacy-safe audit event for actor/project/scope/count/format/result and actionable error/retry/timing telemetry; no tokens or report content | **Open — GA blocker** |
@@ -53,6 +60,9 @@ These are release requirements, even when an individual check is automated.
   accepts no server URL or token.
 - Collection produces an immutable snapshot. Changing any data-affecting option
   marks it stale and disables all exports until recollection.
+- Portfolio selection is de-duplicated and capped at 50; concurrency is capped
+  at four. A failed or denied project remains in the final model and makes the
+  portfolio incomplete.
 - Every output shows its exact project, UTC collection/export times, report ID,
   plugin/schema/server versions, selected datasets, applied filter, exported
   versus collected counts, and completeness reasons.
@@ -84,14 +94,18 @@ These are release requirements, even when an individual check is automated.
   taxonomy; unknown values remain visibly unknown.
 - Ignored quality-gate conditions, threshold kind, new-code period, timezone,
   and duration units have consistent cross-format definitions.
+- Portfolio coverage and duplication use documented source denominators, never
+  naive percentage averages. Missing values remain unavailable; lifecycle and
+  aggregate reconciliation assertions must pass.
 - Paging uses an explicit best-effort sort, deduplication, count reconciliation
   and mutation indicators. Limit breaches cannot be presented as complete;
   equal-sort-key concurrent mutation remains a documented non-transactional risk.
 - Requests have bounded retries, bounded `Retry-After` handling, an actual local
-  timeout, and prompt local cancellation. Transport-level abort remains a GA
-  evidence gate because the supported `SonarRequest.getJSON` contract does not
-  expose an abort signal. Export generation has bounded package construction,
-  cleanup, and recoverable failure state.
+  timeout, and prompt cancellation. The primary same-origin `fetch` transport
+  propagates an abort signal; the compatibility `SonarRequest.getJSON` fallback
+  rejects locally and ignores late results because that helper exposes no abort
+  handle. Export generation has bounded package construction, cleanup, and
+  recoverable failure state.
 
 ## Required automated and manual evidence
 

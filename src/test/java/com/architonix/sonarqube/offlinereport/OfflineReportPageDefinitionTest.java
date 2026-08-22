@@ -15,11 +15,15 @@ public class OfflineReportPageDefinitionTest {
     new OfflineReportPageDefinition().define(context);
 
     Collection<Page> pages = context.getPages();
-    assertThat(pages).hasSize(1);
-    Page page = pages.iterator().next();
+    assertThat(pages).hasSize(2);
+    Page page = pages.stream().filter(candidate -> candidate.getKey().equals(OfflineReportPageDefinition.PAGE_KEY)).findFirst().orElseThrow();
     assertThat(page.getKey()).isEqualTo("offlinereport/report_page");
     assertThat(page.getName()).isEqualTo("Offline Report");
     assertThat(page.getScope()).isEqualTo(Page.Scope.COMPONENT);
     assertThat(page.getComponentQualifiers()).containsExactly(Page.Qualifier.PROJECT);
+    Page portfolio = pages.stream().filter(candidate -> candidate.getKey().equals(OfflineReportPageDefinition.PORTFOLIO_PAGE_KEY)).findFirst().orElseThrow();
+    assertThat(portfolio.getName()).isEqualTo("Portfolio Reporting");
+    assertThat(portfolio.getScope()).isEqualTo(Page.Scope.GLOBAL);
+    assertThat(portfolio.isAdmin()).isFalse();
   }
 }

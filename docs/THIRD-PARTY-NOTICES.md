@@ -1,7 +1,7 @@
 # Third-party notices
 
-This file records direct dependencies declared by the project as of the 1.3.0
-enterprise-candidate work. It is not a substitute for the machine-generated,
+This file records direct dependencies and explicitly pinned build tooling declared by the project as of the 2.0.0
+production-hardening release-candidate work. It is not a substitute for the machine-generated,
 transitive SBOM and license review required for an enterprise release.
 
 ## Runtime/API dependency
@@ -23,7 +23,14 @@ transitive SBOM and license review required for an enterprise release.
 |---|---:|---|---|---|
 | Apache Maven Wrapper | 3.3.4 | Checked-in launcher scripts; downloads the SHA-256-verified Maven distribution | Apache License 2.0 | https://maven.apache.org/tools/wrapper/ |
 | Apache Maven | 3.9.16 | Build tool downloaded by the wrapper; not bundled in the plugin JAR | Apache License 2.0 | https://maven.apache.org/ |
+| Maven Clean Plugin | 3.2.0 | Reproducible lifecycle tooling; not bundled in the plugin JAR | Apache License 2.0 | https://maven.apache.org/plugins/maven-clean-plugin/ |
+| Maven Resources Plugin | 3.5.0 | Resource-copy lifecycle tooling; not bundled in the plugin JAR | Apache License 2.0 | https://maven.apache.org/plugins/maven-resources-plugin/ |
+| Maven Compiler Plugin | 3.13.0 | Java compilation; not bundled in the plugin JAR | Apache License 2.0 | https://maven.apache.org/plugins/maven-compiler-plugin/ |
+| Maven Surefire Plugin | 3.5.2 | Java test runner; not bundled in the plugin JAR | Apache License 2.0 | https://maven.apache.org/surefire/maven-surefire-plugin/ |
+| Maven Install Plugin | 3.1.4 | Local-repository lifecycle tooling; not bundled in the plugin JAR | Apache License 2.0 | https://maven.apache.org/plugins/maven-install-plugin/ |
+| Maven Deploy Plugin | 3.1.4 | Deployment lifecycle tooling; not bundled in the plugin JAR | Apache License 2.0 | https://maven.apache.org/plugins/maven-deploy-plugin/ |
 | Maven Enforcer Plugin | 3.6.3 | Build environment validation; not bundled in the plugin JAR | Apache License 2.0 | https://maven.apache.org/enforcer/maven-enforcer-plugin/ |
+| Sonar Packaging Maven Plugin | 1.23.0.740 | SonarQube plugin packaging; not bundled as a runtime dependency | GNU Lesser General Public License v3.0 | https://github.com/SonarSource/sonar-packaging-maven-plugin |
 | CycloneDX Maven Plugin | 2.9.3 | Generates and validates the release SBOM; not bundled in the plugin JAR | Apache License 2.0 | https://github.com/CycloneDX/cyclonedx-maven-plugin |
 
 The browser exporter currently declares no npm runtime or development

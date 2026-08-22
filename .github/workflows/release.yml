@@ -7,6 +7,13 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   build-release:
@@ -16,6 +23,9 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -36,6 +46,7 @@ jobs:
       - name: Verify tag and project versions
         env:
           TAG_VERSION: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         shell: bash
         run: |
           node --input-type=module <<'NODE'
@@ -43,49 +54,171 @@ jobs:
 
           const expected = process.env.TAG_VERSION.replace(/^v/, "");
           const packageVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
+          const packageLock = JSON.parse(readFileSync("package-lock.json", "utf8"));
           const pom = readFileSync("pom.xml", "utf8");
           const pomVersion = pom.match(/<artifactId>sonar-offline-report-plugin<\/artifactId>\s*<version>([^<]+)<\/version>/)?.[1];
+          const scmTag = pom.match(/<scm>[\s\S]*?<tag>([^<]+)<\/tag>[\s\S]*?<\/scm>/)?.[1];
           const notesPath = `docs/releases/${process.env.TAG_VERSION}.md`;
-          if (!expected || packageVersion !== expected || pomVersion !== expected || !existsSync(notesPath)) {
-            console.error("Tag/project version mismatch", { expected, packageVersion, pomVersion });
+          if (!expected || packageVersion !== expected || packageLock.version !== expected || packageLock.packages?.[""]?.version !== expected
+            || pomVersion !== expected || scmTag !== process.env.TAG_VERSION || !existsSync(notesPath)) {
+            console.error("Tag/project version mismatch", { expected, packageVersion, packageLockVersion: packageLock.version, packageLockRootVersion: packageLock.packages?.[""]?.version, pomVersion, scmTag });
             console.error("Expected release notes", notesPath);
             process.exit(1);
           }
           NODE
 
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-list -n 1 "$GITHUB_REF_NAME")" = "$GITHUB_SHA"
+          if ! git show-ref --verify --quiet "refs/remotes/origin/${DEFAULT_BRANCH}"; then
+            echo "::error::Default branch origin/${DEFAULT_BRANCH} was not fetched."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "refs/remotes/origin/${DEFAULT_BRANCH}"; then
+            echo "::error::Release commit $GITHUB_SHA is not reachable from the default branch ${DEFAULT_BRANCH}."
+            exit 1
+          fi
+
+      - name: Refuse an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "::error::Release $GITHUB_REF_NAME already exists. Refusing to preserve or replace unverified assets."
+            exit 1
+          fi
+
       - name: Build and test browser exporter
         run: npm test
 
       - name: Verify generated asset is committed
+        shell: bash
         run: |
           npm run check
-          git diff --exit-code -- src/main/resources/static/report_page.js
+          git diff --exit-code -- src/main/resources/static/report_page.js src/main/resources/static/portfolio_page.js
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Stamp release source provenance into browser bundles
+        shell: bash
+        run: |
+          npm run build:release
+          grep -F "\"sourceRevision\":\"$GITHUB_SHA\"" src/main/resources/static/report_page.js
+          grep -F "\"sourceState\":\"clean\"" src/main/resources/static/portfolio_page.js
+          grep -F "\"sourceRevisionVerified\":true" src/main/resources/static/report_page.js
 
       - name: Build and test plugin
         run: sh ./mvnw --batch-mode --no-transfer-progress clean verify
 
-      - name: Create checksum
+      - name: Run real-browser persona regression on release inputs
+        run: npm run test:browser
+
+      - name: Run bounded export benchmark on release inputs
+        shell: bash
+        run: npm run benchmark | tee target/benchmark-results.log
+
+      - name: Package release validation evidence with normalized archive metadata
         shell: bash
         run: |
+          version="${GITHUB_REF_NAME#v}"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -C target -cf - browser-regression benchmark-results.log \
+            | gzip -n > "target/sonar-offline-report-plugin-${version}.validation.tar.gz"
+
+      - name: Verify package and create release provenance manifest
+        run: node scripts/release-provenance.mjs --write
+
+      - name: Create exact release checksums
+        id: release_assets
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
           cd target
-          sha256sum sonar-offline-report-plugin-*.jar > sonar-offline-report-plugin-${GITHUB_REF_NAME#v}.jar.sha256
-          sha256sum sonar-offline-report-plugin-*.cdx.json > sonar-offline-report-plugin-${GITHUB_REF_NAME#v}.cdx.json.sha256
+          sha256sum "sonar-offline-report-plugin-${version}.jar" > "sonar-offline-report-plugin-${version}.jar.sha256"
+          sha256sum "sonar-offline-report-plugin-${version}.cdx.json" > "sonar-offline-report-plugin-${version}.cdx.json.sha256"
+          sha256sum "sonar-offline-report-plugin-${version}.provenance.json" > "sonar-offline-report-plugin-${version}.provenance.json.sha256"
+          sha256sum "sonar-offline-report-plugin-${version}.validation.tar.gz" > "sonar-offline-report-plugin-${version}.validation.tar.gz.sha256"
+          echo "jar=target/sonar-offline-report-plugin-${version}.jar" >> "$GITHUB_OUTPUT"
+          echo "jar_checksum=target/sonar-offline-report-plugin-${version}.jar.sha256" >> "$GITHUB_OUTPUT"
+          echo "sbom=target/sonar-offline-report-plugin-${version}.cdx.json" >> "$GITHUB_OUTPUT"
+          echo "sbom_checksum=target/sonar-offline-report-plugin-${version}.cdx.json.sha256" >> "$GITHUB_OUTPUT"
+          echo "provenance=target/sonar-offline-report-plugin-${version}.provenance.json" >> "$GITHUB_OUTPUT"
+          echo "provenance_checksum=target/sonar-offline-report-plugin-${version}.provenance.json.sha256" >> "$GITHUB_OUTPUT"
+          echo "validation=target/sonar-offline-report-plugin-${version}.validation.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "validation_checksum=target/sonar-offline-report-plugin-${version}.validation.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Revalidate remote release tag before attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          tag_ref="refs/tags/${GITHUB_REF_NAME}"
+          peeled_ref="${tag_ref}^{}"
+          remote_commit="$(
+            git ls-remote --exit-code "https://github.com/${GITHUB_REPOSITORY}.git" "$tag_ref" "$peeled_ref" \
+              | awk -v tag_ref="$tag_ref" -v peeled_ref="$peeled_ref" '
+                  $2 == tag_ref { direct = $1 }
+                  $2 == peeled_ref { peeled = $1 }
+                  END { print peeled ? peeled : direct }
+                '
+          )"
+          if [ -z "$remote_commit" ] || [ "$remote_commit" != "$GITHUB_SHA" ]; then
+            echo "::error::Remote tag ${GITHUB_REF_NAME} no longer resolves to release commit $GITHUB_SHA."
+            exit 1
+          fi
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "::error::Release $GITHUB_REF_NAME appeared while the build was running. Refusing attestation."
+            exit 1
+          fi
+
+      - name: Attest release subjects
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            ${{ steps.release_assets.outputs.jar }}
+            ${{ steps.release_assets.outputs.jar_checksum }}
+            ${{ steps.release_assets.outputs.sbom }}
+            ${{ steps.release_assets.outputs.sbom_checksum }}
+            ${{ steps.release_assets.outputs.provenance }}
+            ${{ steps.release_assets.outputs.provenance_checksum }}
+            ${{ steps.release_assets.outputs.validation }}
+            ${{ steps.release_assets.outputs.validation_checksum }}
+
+      - name: Bind the CycloneDX SBOM to the plugin JAR
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.release_assets.outputs.jar }}
+          sbom-path: ${{ steps.release_assets.outputs.sbom }}
 
       - name: Publish GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            echo "Release $GITHUB_REF_NAME already exists; preserving its validated assets."
-          else
-            gh release create "$GITHUB_REF_NAME" \
-              target/sonar-offline-report-plugin-*.jar \
-              target/sonar-offline-report-plugin-*.jar.sha256 \
-              target/sonar-offline-report-plugin-*.cdx.json \
-              target/sonar-offline-report-plugin-*.cdx.json.sha256 \
-              --prerelease \
-              --verify-tag \
-              --notes-file "docs/releases/${GITHUB_REF_NAME}.md" \
-              --title "$GITHUB_REF_NAME - Enterprise Candidate"
+          version="${GITHUB_REF_NAME#v}"
+          tag_ref="refs/tags/${GITHUB_REF_NAME}"
+          peeled_ref="${tag_ref}^{}"
+          remote_commit="$(
+            git ls-remote --exit-code "https://github.com/${GITHUB_REPOSITORY}.git" "$tag_ref" "$peeled_ref" \
+              | awk -v tag_ref="$tag_ref" -v peeled_ref="$peeled_ref" '
+                  $2 == tag_ref { direct = $1 }
+                  $2 == peeled_ref { peeled = $1 }
+                  END { print peeled ? peeled : direct }
+                '
+          )"
+          if [ -z "$remote_commit" ] || [ "$remote_commit" != "$GITHUB_SHA" ]; then
+            echo "::error::Remote tag ${GITHUB_REF_NAME} changed before publication."
+            exit 1
           fi
+          gh release create "$GITHUB_REF_NAME" \
+            "target/sonar-offline-report-plugin-${version}.jar" \
+            "target/sonar-offline-report-plugin-${version}.jar.sha256" \
+            "target/sonar-offline-report-plugin-${version}.cdx.json" \
+            "target/sonar-offline-report-plugin-${version}.cdx.json.sha256" \
+            "target/sonar-offline-report-plugin-${version}.provenance.json" \
+            "target/sonar-offline-report-plugin-${version}.provenance.json.sha256" \
+            "target/sonar-offline-report-plugin-${version}.validation.tar.gz" \
+            "target/sonar-offline-report-plugin-${version}.validation.tar.gz.sha256" \
+            --prerelease \
+            --verify-tag \
+            --notes-file "docs/releases/${GITHUB_REF_NAME}.md" \
+            --title "$GITHUB_REF_NAME - Enterprise Candidate"

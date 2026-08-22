@@ -4,15 +4,21 @@
 
 | Concern | Baseline |
 |---|---|
-| Release classification | `1.3.0` enterprise candidate/pilot |
+| Release classification | `2.0.0` production-hardening release candidate |
 | Target SonarQube Community Build | `26.6.0.123539` |
 | Plugin API compile/minimum | `13.7.0.4381` |
 | Java bytecode | 11 |
 | Java API surface | `Plugin`, `PageDefinition`, `Page` |
-| Browser integration | `registerExtension`, `SonarRequest.getJSON` |
-| Tested deployment | Linux Docker lab deployment; endpoint omitted from public documentation |
+| Browser integration | `registerExtension`, context-path-aware credentialed `fetch`; `SonarRequest.getJSON` fallback |
+| Tested deployment | Linux Docker deployment on the exact target; upgrade, page/static smoke and rollback rehearsal pass |
 
 This artifact targets the exact deployed 26.6 instance. It is not advertised as compatible across untested SonarQube or Plugin API major versions.
+
+## Model v3 compatibility posture
+
+Version 2.0.0 preserves the qualified project page and adds a public `Page.Scope.GLOBAL` page. Automated registration verifies both pages and confirms the portfolio page is not admin-only. The browser bundle adds `/api/components/search` for Browse-filtered inventory and `/api/measures/search_history` for optional trends; both actions and global-page rendering still require exact-candidate qualification against `26.6.0.123539` before controlled pilot.
+
+Portfolio mode intentionally supports main branches only. Single-project branch/pull-request behavior is unchanged. Template Schema v2 remains accepted; Model v3 adds fields and does not promise that an older renderer can understand a v3 JSON snapshot.
 
 ## Historical v1.2.1 target deployment evidence — 2026-08-18
 
@@ -54,23 +60,27 @@ The installation path and rollback locations are intentionally retained in the p
 | Revoked/expired permission during collection fails closed | Pending |
 | HTTPS reverse proxy, secure cookies, and production authentication | Pending |
 | Main-branch user-context test beyond the admin smoke | Pending |
+| Global portfolio page loads for an ordinary authenticated user | Pending |
+| Visible-project inventory exactly matches Browse permissions | Pending |
+| Mixed complete/partial/denied portfolio on the target server | Pending |
+| Metric-history availability and branch semantics on target API | Pending |
+| 1/10/25/50 project load and cancellation benchmark | Pending |
 | 0/1/501/9,999/10,000/10,001 and mutable/duplicate live fixtures | Pending |
 | Live 429/503, Retry-After, timeout, and cancellation fault injection | Pending |
 | Firefox offline and accessibility/reflow/manual keyboard checks | Pending |
 | Microsoft Word and LibreOffice DOCX no-repair smoke | Pending |
 | Microsoft Excel and LibreOffice XLSX no-repair smoke | Pending |
 | Open XML SDK validation and large-document resource tests | Pending |
-| Atomic upgrade and rollback/removal acceptance | Pending |
+| Atomic v2.0.0 upgrade, v1.3.0 restore and final v2.0.0 reinstall | Pass on exact Linux Docker target; removal/uninstall remains a separate operational check |
 | Approved SBOM, signing/provenance, support, and vulnerability process | Pending |
 
 Until these close, publish this build as a controlled candidate/pilot, not enterprise GA.
 
-## v1.3.0 automated release evidence
+## Automated source evidence
 
-- Browser/export tests: 31/31 pass, including timeout, cancellation, bounded
-  retry, pagination-window, branch-scope, Unicode, ZIP-budget, and lifecycle
-  consistency coverage.
-- Java page-registration test: 1/1 passes.
+- Browser/export tests: 77/77 source tests pass in the Model v3 implementation run, including timeout, transport cancellation, bounded retry/concurrency, project inventory, mixed outcomes, pagination-window, branch scope, weighted formulas, null/zero trends, exact HTML dataset-state disclosure, schema/persona/provenance contracts, Unicode, ZIP budgets, hostile content and cross-format reconciliation.
+- Local Chrome 151 regression: 224/224 checks across all eight built-in profiles at desktop/390px, CSP/offline enforcement, 16 deterministic screenshots, three deterministic print PDFs, and complete project/portfolio print-scope reconciliation with all 19 artifact hashes independently verified. This is renderer evidence, not target-server authorization or native-dialog evidence.
+- Java page-registration test verifies both project and global page definitions.
 - The Maven Wrapper verifies Maven 3.9.16; Maven Enforcer requires Maven 3.9+
   and JDK 17+ while emitted plugin bytecode remains Java 11.
 - The build verifies the generated browser bundle and required JAR contents and
@@ -78,16 +88,19 @@ Until these close, publish this build as a controlled candidate/pilot, not enter
 - GitHub Actions use immutable commit revisions and the workflows pass
   `actionlint` 1.7.12.
 
-These automated results do not replace live qualification of the exact tagged
-artifact. The historical deployment table and digests above apply only to
-v1.2.1; v1.3.0 must receive its own deployment record before pilot promotion.
+These automated results do not replace authenticated live qualification of the
+exact tagged artifact. The historical table and digests above apply only to
+v1.2.1. The v2.0.0 exact-candidate upgrade, asset-integrity check, rollback
+rehearsal and final reinstall are recorded in
+[the 2026-08-22 deployment validation](DEPLOYMENT-VALIDATION-2026-08-22.md);
+ordinary-user authorization, data collection and production-policy gates remain open.
 
 ## API and upgrade policy
 
 - Use only public Web API actions and parameters documented by the installed instance.
 - Do not use internal APIs, SonarQube database access, privileged credentials, or server-side report storage.
 - Normalize legacy and modern issue taxonomies while retaining raw values and explicit unknown states.
-- Capability-test `registerExtension`, `SonarRequest.getJSON`, and every action contract after an upgrade.
+- Capability-test `registerExtension`, context-path discovery, credentialed `fetch`, the compatibility fallback, and every action contract after an upgrade.
 - Review SonarQube API deprecation logs and rerun the full acceptance matrix before changing the support statement.
 
 Primary references:

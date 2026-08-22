@@ -1,5 +1,5 @@
 /* SonarQube Offline Report Plugin 2.0.0 - generated; edit src/main/js and run npm run build. */
-window.OfflineReportBuild = Object.freeze({"pluginVersion":"2.0.0","sourceRevision":null,"sourceRevisionBase":null,"sourceState":"unstamped","sourceDirty":null,"sourceRevisionVerified":false,"sourceDigest":"sha256:93ff5b892eb12393ff07d54c61659235e5ae73f98507df3567bc257cbb9fea35","sourceDigestScope":"plugin-build-inputs-v1","pluginArtifactDigest":null,"pluginArtifactDigestState":"not_computed","bundleName":"report_page.js","bundleSourceDigest":"sha256:9e234b89b40a265b41283f0c4bec7dda3d8424b94a5c28bc7ea1d04dd3698cfd","bundleSourceDigestScope":"ordered-browser-source-inputs-v1"});
+window.OfflineReportBuild = Object.freeze({"pluginVersion":"2.0.0","sourceRevision":null,"sourceRevisionBase":null,"sourceState":"unstamped","sourceDirty":null,"sourceRevisionVerified":false,"sourceDigest":"sha256:93ff5b892eb12393ff07d54c61659235e5ae73f98507df3567bc257cbb9fea35","sourceDigestScope":"plugin-build-inputs-v1","pluginArtifactDigest":null,"pluginArtifactDigestState":"not_computed","bundleName":"portfolio_page.js","bundleSourceDigest":"sha256:2a32775c5bcafb073bf4bf42b707303364abb7831addb5e12b7aa9532649175a","bundleSourceDigestScope":"ordered-browser-source-inputs-v1"});
 (function (global) {
   "use strict";
 
@@ -3942,416 +3942,387 @@ ${printManifest}<div class="layout"><nav class="toc" aria-label="Report contents
   "use strict";
 
   const app = global.OfflineReport = global.OfflineReport || {};
-  const STORAGE_KEY = "sonarqube-offline-report-template-v2";
-  const FORMAT_NAMES = Object.freeze({
-    html: "offline HTML", xlsx: "Excel workbook", docx: "Word document",
-    print: "PDF print view", csv: "issues CSV", json: "JSON snapshot"
-  });
+  const MAX_PORTFOLIO_TOTAL_ISSUES = 25000;
+  const MAX_PORTFOLIO_TOTAL_COMPONENTS = 50000;
+  const DEFAULT_PORTFOLIO_ISSUES_PER_PROJECT = 500;
+  const DEFAULT_PORTFOLIO_COMPONENTS_PER_PROJECT = 1000;
+  const PORTFOLIO_UI_CSS = `
+  .opf{--navy:#132b40;--teal:#0b6b69;--amber:#b06b00;--ink:#172738;--muted:#607080;--line:#d5dfe6;--paper:#f4f7f8;box-sizing:border-box;width:100%;max-width:1180px;height:var(--opf-height,calc(100dvh - 140px));margin:auto;overflow-y:scroll;scrollbar-gutter:stable;padding:0 24px 180px;color:var(--ink);font:14px/1.5 Inter,Segoe UI,Arial,sans-serif}.opf *{box-sizing:border-box}.opf-hero{background:var(--navy);color:#fff;margin:0 -24px 20px;padding:28px 32px;border-bottom:7px solid var(--teal);display:flex;justify-content:space-between;gap:24px}.opf-kicker{font:700 11px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.13em;text-transform:uppercase;color:#9bd8d1}.opf h1{font-size:34px;line-height:1.05;margin:8px 0}.opf h2{font-size:20px;margin:0}.opf h3{font-size:15px;margin:0}.opf p{margin:5px 0}.opf-hero p{color:#d4e3eb;max-width:720px}.opf-hero a{color:#a9e4dd}.opf-warning{border-left:5px solid var(--amber);background:#fff5dd;padding:12px 15px;margin-bottom:16px}.opf-form{display:grid;gap:15px}.opf-card{background:#fff;border:1px solid var(--line);padding:18px}.opf-step{display:flex;gap:14px;align-items:flex-start;margin-bottom:13px}.opf-step b{display:grid;place-items:center;min-width:30px;height:30px;background:var(--navy);color:#fff;font:700 12px ui-monospace,Consolas,monospace}.opf-step p,.opf-help{color:var(--muted)}.opf-mode{display:grid;grid-template-columns:1fr 1fr;gap:10px}.opf-mode>*{border:1px solid var(--line);padding:13px}.opf-mode .active{border-color:var(--teal);box-shadow:inset 5px 0 var(--teal);background:#eef9f7}.opf-tools{display:grid;grid-template-columns:minmax(220px,2fr) 1fr auto auto;gap:8px;align-items:end}.opf label{display:grid;gap:4px}.opf input[type=search],.opf input[type=number],.opf select{min-height:44px;border:1px solid #9baab5;background:#fff;padding:8px}.opf button{min-height:44px;border:1px solid #8697a4;background:#fff;color:var(--ink);font-weight:700;padding:8px 13px;cursor:pointer}.opf button:hover:not(:disabled){background:#edf2f4}.opf button:focus-visible,.opf input:focus-visible,.opf select:focus-visible{outline:3px solid #77c4be;outline-offset:2px}.opf button:disabled{opacity:.55;cursor:not-allowed}.opf-projects{border:1px solid var(--line);max-height:330px;overflow:auto;margin-top:12px}.opf-project{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}.opf-project:last-child{border-bottom:0}.opf-project:hover{background:#f3f7f8}.opf-project input{width:18px;height:18px}.opf-project strong,.opf-project code{display:block}.opf-project code{font-size:11px;color:var(--muted)}.opf-count{font:700 12px ui-monospace,Consolas,monospace;color:var(--teal)}.opf-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.opf-choice{position:relative;border:1px solid var(--line);padding:13px;min-height:88px}.opf-choice input{position:absolute;right:12px;top:12px}.opf-choice strong,.opf-choice span{display:block;padding-right:22px}.opf-choice span{color:var(--muted);margin-top:4px}.opf-choice:has(input:checked){border-color:var(--teal);box-shadow:inset 0 0 0 1px var(--teal);background:#eef9f7}.opf-scope{display:grid;grid-template-columns:1fr 1fr;gap:18px}.opf fieldset{border:1px solid var(--line);padding:12px}.opf-check{display:flex!important;grid-template-columns:auto 1fr!important;gap:8px!important;min-height:38px;align-items:start;padding:5px 0}.opf-check input{width:18px;height:18px}.opf-output{grid-template-columns:repeat(4,1fr)}.opf-doc-options{background:var(--paper);padding:12px;margin-top:10px}.opf-submit{display:flex;gap:10px;align-items:center;background:#fff;border-top:1px solid var(--line);padding:14px 0;position:sticky;bottom:0}.opf-primary{background:var(--teal)!important;border-color:var(--teal)!important;color:#fff!important;min-width:210px}.opf-progress{flex:1;min-width:120px}.opf-status{margin-left:auto;white-space:pre-line;color:var(--muted);max-width:430px}.opf-status[data-kind=error]{color:#a52a2a;font-weight:700}.opf-status[data-kind=success]{color:#176b4d}.opf-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);margin-top:12px}.opf-summary div{background:#fff;padding:10px}.opf-summary span{display:block;color:var(--muted);font-size:11px}.opf-summary strong{font:700 20px ui-monospace,Consolas,monospace}.opf-empty{padding:24px;color:var(--muted)}
+  @media(max-width:800px){.opf-tools{grid-template-columns:1fr 1fr}.opf-grid,.opf-output{grid-template-columns:repeat(2,1fr)}.opf-scope{grid-template-columns:1fr}.opf-hero{display:block}.opf-summary{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){.opf{padding:0 12px 140px}.opf-hero{margin:0 -12px 16px;padding:24px 16px}.opf-mode,.opf-grid,.opf-output,.opf-tools{grid-template-columns:1fr}.opf-project{grid-template-columns:28px 1fr}.opf-project>span{grid-column:2}.opf-submit{align-items:stretch;flex-direction:column}.opf-status{margin-left:0}.opf-summary{grid-template-columns:1fr}}
+  `;
 
-  const UI_CSS = `
-.orp{--ink:#17212b;--muted:#5f6b76;--line:#d6dde4;--surface:#fff;--soft:#f5f7f9;--brand:#0f6f73;box-sizing:border-box;width:100%;max-width:1040px;height:var(--orp-available-height,calc(100dvh - 150px));margin:0 auto;padding:24px 24px 0;color:var(--ink);font:14px/1.5 Arial,sans-serif;overflow-x:hidden;overflow-y:scroll;overscroll-behavior:contain;scrollbar-gutter:stable}
-  .orp *{box-sizing:border-box}.orp h1{font-size:28px;line-height:1.2;margin:0}.orp h2{font-size:19px;margin:0}.orp h3{font-size:15px;margin:0}.orp p{margin:6px 0}.orp-kicker{display:block;color:var(--brand);font:700 11px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;margin-bottom:7px}.orp-mode-link{display:inline-block;margin-top:8px;color:var(--brand);font-weight:700}.orp-header{display:flex;gap:24px;justify-content:space-between;align-items:flex-start;margin-bottom:18px}.orp-subtitle,.orp-help,.orp small{color:var(--muted)}.orp-context{text-align:right;max-width:40%}.orp-context strong,.orp-context span{display:block}.orp-warning{border-left:4px solid #b7791f;background:#fff8e8;padding:12px 14px;margin:0 0 18px}.orp-form{display:grid;gap:16px}.orp-card{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:18px}.orp-section-head{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;margin-bottom:12px}.orp-section-head p{color:var(--muted);margin:2px 0}.orp-choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.orp-format-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.orp-choice{position:relative;display:block;border:1px solid var(--line);border-radius:8px;padding:14px;min-height:90px;cursor:pointer;background:#fff}.orp-choice:hover{border-color:#7c929f}.orp-choice:focus-within{outline:3px solid #8ac7ca;outline-offset:2px}.orp-choice input{position:absolute;top:14px;right:14px;width:18px;height:18px}.orp-choice strong,.orp-choice span{display:block;padding-right:25px}.orp-choice span{color:var(--muted);margin-top:5px}.orp-choice.is-selected{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand);background:#f1fbfa}.orp details{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}.orp summary{cursor:pointer;font-weight:700;min-height:40px;padding:8px 2px}.orp details[open]>summary{margin-bottom:10px}.orp-advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.orp fieldset{min-width:0;border:1px solid var(--line);border-radius:8px;padding:12px}.orp legend{font-weight:700;padding:0 5px}.orp label:not(.orp-choice):not(.orp-check){display:grid;gap:4px;margin:10px 0}.orp input[type=text],.orp input[type=number],.orp textarea,.orp select{width:100%;min-height:42px;border:1px solid #aeb9c2;border-radius:6px;padding:8px;color:var(--ink);background:#fff}.orp input[type=color]{width:60px;height:42px;border:1px solid #aeb9c2;border-radius:6px;padding:3px}.orp textarea{min-height:78px;resize:vertical}.orp-check{display:flex;gap:8px;align-items:flex-start;min-height:36px;padding:6px 0}.orp-check input{width:18px;height:18px;flex:0 0 auto}.orp-inline{display:flex;gap:12px;flex-wrap:wrap}.orp-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.orp button{min-height:42px;border:1px solid #8c9aa5;border-radius:6px;background:#fff;padding:8px 13px;font-weight:700;color:var(--ink);cursor:pointer}.orp button:hover:not(:disabled){background:#edf1f4}.orp button:focus-visible,.orp summary:focus-visible{outline:3px solid #77bdc1;outline-offset:2px}.orp button:disabled{opacity:.55;cursor:not-allowed}.orp-primary{background:var(--brand)!important;border-color:var(--brand)!important;color:#fff!important;min-width:190px}.orp-submit{display:flex;align-items:center;gap:12px;position:sticky;bottom:0;background:rgba(255,255,255,.96);border-top:1px solid var(--line);padding:14px 0;z-index:2}.orp-submit .orp-status{margin-left:auto}.orp-status{white-space:pre-line;color:var(--muted)}.orp-status[data-kind=error]{color:#a12622;font-weight:700}.orp-status[data-kind=success]{color:#176b42}.orp-status[data-kind=stale]{color:#8a5700;font-weight:700}.orp-progress{width:180px;height:10px}.orp-document-options{background:var(--soft);border-radius:8px;padding:12px;margin-top:12px}.orp-document-options[hidden]{display:none}.orp-file{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
-.orp input[type=text],.orp input[type=number],.orp textarea,.orp select,.orp button{min-height:44px}.orp input[type=color]{height:44px}.orp-submit{position:static;bottom:auto;z-index:auto;background:#fff}.orp-end-space{height:clamp(128px,16vh,220px);min-height:128px;pointer-events:none}
-@media(max-width:800px){.orp-format-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.orp-advanced-grid{grid-template-columns:1fr}.orp-context{max-width:none;text-align:left}.orp-header{display:block}.orp-context{margin-top:8px}}
-@media(max-width:520px){.orp{padding:14px}.orp-choice-grid,.orp-format-grid{grid-template-columns:1fr}.orp-submit{align-items:stretch;flex-direction:column}.orp-submit .orp-status{margin-left:0}.orp-progress{width:100%}}
-@media print{.orp-submit{position:static}}
-`;
-
-  function injectStyle() {
-    if (document.getElementById("orp-ui-style")) return;
+  function injectPortfolioStyle() {
+    if (document.getElementById("opf-style")) return;
     const style = document.createElement("style");
-    style.id = "orp-ui-style";
-    style.textContent = UI_CSS;
+    style.id = "opf-style";
+    style.textContent = PORTFOLIO_UI_CSS;
     document.head.appendChild(style);
   }
 
-  function fitScrollViewport(container) {
-    let frame = 0;
-    const update = () => {
-      if (!container || !container.isConnected) return;
-      const viewportHeight = global.visualViewport ? global.visualViewport.height : global.innerHeight;
-      const top = Math.max(0, container.getBoundingClientRect().top);
-      const available = Math.max(120, Math.floor(viewportHeight - top - 16));
-      container.style.setProperty("--orp-available-height", `${available}px`);
-    };
-    const schedule = () => {
-      if (frame) global.cancelAnimationFrame(frame);
-      frame = global.requestAnimationFrame(update);
-    };
-    global.addEventListener("resize", schedule, { passive: true });
-    if (global.visualViewport) global.visualViewport.addEventListener("resize", schedule, { passive: true });
-    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(schedule) : null;
-    if (observer) observer.observe(document.documentElement);
-    schedule();
-    return () => {
-      if (frame) global.cancelAnimationFrame(frame);
-      global.removeEventListener("resize", schedule);
-      if (global.visualViewport) global.visualViewport.removeEventListener("resize", schedule);
-      if (observer) observer.disconnect();
-    };
-  }
-
-  function readStoredTemplate() {
-    try {
-      const value = localStorage.getItem(STORAGE_KEY);
-      return value ? app.parseTemplateJson(value) : null;
-    } catch (_) { return null; }
-  }
-
-  function writeStoredTemplate(template) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(template));
-  }
-
-  function projectFromLocation() {
-    const key = new URLSearchParams(global.location.search).get("id");
-    return key ? { key, name: key, qualifier: "TRK" } : null;
-  }
-
-  function freezeSnapshot(value, seen) {
+  function freezePortfolioSnapshot(value, seen) {
     if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
     const visited = seen || new WeakSet();
     if (visited.has(value)) return value;
     visited.add(value);
-    Object.keys(value).forEach((key) => freezeSnapshot(value[key], visited));
+    Object.keys(value).forEach((key) => freezePortfolioSnapshot(value[key], visited));
     return Object.freeze(value);
   }
 
-  function snapshotSignature(component, branchLike, settings) {
-    const branch = branchLike || {};
+  function portfolioSnapshotSignature(projects, settings) {
+    const source = settings || {};
     return JSON.stringify({
-      project: component && component.key || "",
-      branch: branch.key || branch.name || "",
-      pullRequest: branch.pullRequest || branch.pullRequestKey || "",
-      includeIssues: !!settings.includeIssues,
-      includeComponents: !!settings.includeComponents,
-      includeAnalyses: !!settings.includeAnalyses,
-      includeTrends: !!settings.includeTrends,
-      includePeople: !!settings.includePeople,
-      maxIssues: Number(settings.maxIssues),
-      maxComponents: Number(settings.maxComponents)
+      projectKeys: (projects || []).map((project) => app.text(project && project.key)).filter(Boolean).sort(),
+      includeIssues: !!source.includeIssues,
+      includeComponents: !!source.includeComponents,
+      includeAnalyses: !!source.includeAnalyses,
+      includeTrends: !!source.includeTrends,
+      includePeople: !!source.includePeople,
+      maxIssues: Number(source.maxIssues),
+      maxComponents: Number(source.maxComponents),
+      concurrency: Number(source.concurrency),
+      rankProjects: source.rankProjects !== false
     });
   }
 
-  function start(root, extensionOptions) {
-    injectStyle();
-    const component = extensionOptions.component || projectFromLocation();
-    const branchLike = extensionOptions.branchLike;
-    let currentTemplate = readStoredTemplate() || app.normalizeTemplate(app.BUILTIN_TEMPLATES[2]);
+  function portfolioActualCounts(report, issueScope) {
+    const entries = (report && report.projects || []).filter((entry) => entry && entry.derived);
+    const issues = entries.flatMap((entry) => entry.issues || []);
+    const selectedIssues = issueScope !== "active" ? issues : issues.filter((issue) => {
+      const lifecycle = app.text(issue && (issue.normalizedLifecycle || issue.lifecycleStatus)).toLowerCase();
+      return lifecycle ? lifecycle === "actionable" : app.issueLifecycle ? app.issueLifecycle(issue) === "actionable" : true;
+    });
+    return {
+      projects: (report && report.projects || []).length,
+      issues: issues.length,
+      selectedIssues: selectedIssues.length,
+      components: entries.reduce((sum, entry) => sum + (entry.components || []).length, 0),
+      analyses: entries.reduce((sum, entry) => sum + (entry.analyses || []).length, 0),
+      trendObservations: entries.reduce((sum, entry) => sum + (entry.trends || []).reduce((trendSum, series) => trendSum + ((series && series.observations || []).length), 0), 0)
+    };
+  }
+
+  function portfolioPreflight(format, projects, settings, documentOptions, report) {
+    const source = settings || {};
+    const options = documentOptions || {};
+    const selectedCount = (projects || []).length;
+    const actual = report ? portfolioActualCounts(report, options.issueScope) : null;
+    const estimatedIssues = source.includeIssues ? selectedCount * Math.max(1, Number(source.maxIssues) || DEFAULT_PORTFOLIO_ISSUES_PER_PROJECT) : 0;
+    const estimatedComponents = source.includeComponents ? selectedCount * Math.max(1, Number(source.maxComponents) || DEFAULT_PORTFOLIO_COMPONENTS_PER_PROJECT) : 0;
+    const estimatedAnalyses = source.includeAnalyses ? selectedCount * 100 : 0;
+    const estimatedTrendObservations = source.includeTrends ? selectedCount * 100 * ((app.TREND_METRICS || []).length || 8) : 0;
+    const issueCount = actual ? actual.issues : estimatedIssues;
+    const selectedIssueCount = actual ? actual.selectedIssues : estimatedIssues;
+    const componentCount = actual ? actual.components : estimatedComponents;
+    const analysisCount = actual ? actual.analyses : estimatedAnalyses;
+    const trendObservationCount = actual ? actual.trendObservations : estimatedTrendObservations;
+    const register = ["docx", "print"].includes(format) && options.mode === "register";
+    const issueLimit = register ? Number(app.MAX_DOCX_ISSUES) || 2000 : MAX_PORTFOLIO_TOTAL_ISSUES;
+    const errors = [];
+    const warnings = [];
+    const missingRequired = app.missingRequiredDatasets ? app.missingRequiredDatasets(options.template, report || source) : [];
+    const issuesRequired = format === "csv" || register;
+    if (missingRequired.length) errors.push(`The selected profile requires ${missingRequired.join(", ")}; enable that data before collection.`);
+    if (issuesRequired && !source.includeIssues) errors.push(`${format === "csv" ? "CSV" : "The issue-register mode"} requires the Issues dataset.`);
+    if ((register ? selectedIssueCount : issueCount) > issueLimit) {
+      errors.push(`${format.toUpperCase()} supports at most ${issueLimit.toLocaleString()} issue rows for this mode; the ${actual ? "collected" : "requested worst-case"} scope is ${(register ? selectedIssueCount : issueCount).toLocaleString()}.`);
+    }
+    if (componentCount > MAX_PORTFOLIO_TOTAL_COMPONENTS) {
+      errors.push(`Portfolio collection supports at most ${MAX_PORTFOLIO_TOTAL_COMPONENTS.toLocaleString()} component rows; the ${actual ? "collected" : "requested worst-case"} scope is ${componentCount.toLocaleString()}.`);
+    }
+    if (format === "docx" && options.template && options.template.sections) {
+      const docxComponentLimit = Number(app.MAX_DOCX_COMPONENTS) || 2000;
+      const docxAnalysisLimit = Number(app.MAX_DOCX_ANALYSES) || 5000;
+      const docxTrendLimit = Number(app.MAX_DOCX_TREND_OBSERVATIONS) || 5000;
+      if (options.template.sections.components && componentCount > docxComponentLimit) {
+        errors.push(`DOCX supports at most ${docxComponentLimit.toLocaleString()} component evidence rows; this ${actual ? "collected" : "requested worst-case"} scope is ${componentCount.toLocaleString()}.`);
+      }
+      if (options.template.sections.analyses && analysisCount > docxAnalysisLimit) {
+        errors.push(`DOCX supports at most ${docxAnalysisLimit.toLocaleString()} analysis rows; this ${actual ? "collected" : "requested worst-case"} scope is ${analysisCount.toLocaleString()}.`);
+      }
+      if (options.template.sections.trends && trendObservationCount > docxTrendLimit) {
+        errors.push(`DOCX supports at most ${docxTrendLimit.toLocaleString()} historical observations; this ${actual ? "collected" : "requested worst-case"} scope is ${trendObservationCount.toLocaleString()}.`);
+      }
+    }
+    const modelBytes = report && typeof TextEncoder === "function" ? new TextEncoder().encode(JSON.stringify(report)).byteLength : 0;
+    const estimatedPackageBytes = format === "xlsx"
+      ? Math.max(modelBytes * 5, 1024 * 1024 + issueCount * 1800 + componentCount * 350 + selectedCount * 65536)
+      : ["docx", "print"].includes(format) ? Math.max(modelBytes, 512 * 1024 + (register ? selectedIssueCount * 3500 : selectedCount * 65536)) : 0;
+    const packageLimit = format === "xlsx" ? Number(app.MAX_XLSX_BYTES) || 75 * 1024 * 1024
+      : format === "docx" ? Number(app.MAX_DOCX_BYTES) || 50 * 1024 * 1024 : 0;
+    if (packageLimit && estimatedPackageBytes > packageLimit) {
+      errors.push(`The estimated ${format.toUpperCase()} package exceeds its ${Math.round(packageLimit / 1024 / 1024)} MiB safety budget. Reduce issues/components or choose another format.`);
+    } else if (packageLimit && estimatedPackageBytes > packageLimit * 0.8) {
+      warnings.push(`The estimated ${format.toUpperCase()} package is near its fixed ${Math.round(packageLimit / 1024 / 1024)} MiB safety budget; final byte checks still apply.`);
+    }
+    return Object.freeze({
+      ok: errors.length === 0,
+      errors: Object.freeze(errors),
+      warnings: Object.freeze(warnings),
+      estimated: Object.freeze({ projects: selectedCount, issues: estimatedIssues, components: estimatedComponents, analyses: estimatedAnalyses, trendObservations: estimatedTrendObservations, packageBytes: estimatedPackageBytes }),
+      actual: actual ? Object.freeze(actual) : null,
+      limits: Object.freeze({ issues: issueLimit, components: MAX_PORTFOLIO_TOTAL_COMPONENTS, packageBytes: packageLimit || null })
+    });
+  }
+
+  function startPortfolio(root) {
+    injectPortfolioStyle();
+    let projects = [];
+    let selected = new Set();
     let snapshot = null;
     let preparedSignature = "";
     let controller = null;
     let working = false;
+    const template = app.normalizeTemplate(app.BUILTIN_TEMPLATES[4]);
     const contextPath = app.contextPathFromLocation ? app.contextPathFromLocation() : "";
-
-    root.innerHTML = `<main class="page page-limited orp"><header class="orp-header"><div><span class="orp-kicker">Single project mode</span><h1>Create decision-ready report</h1><p class="orp-subtitle">Collect once, then produce executive and engineering views from the same reconciled evidence.</p><a class="orp-mode-link" href="/extension/offlinereport/portfolio_page">Need several projects? Open Portfolio Reporting</a></div><div class="orp-context"><strong id="orp-project"></strong><span id="orp-branch"></span><small id="orp-cache">No data prepared</small></div></header><div class="orp-warning"><strong>Portable data warning:</strong> exports are no longer protected by SonarQube access controls. Store and share them appropriately. Source code is never exported.</div><form id="orp-form" class="orp-form">
-<section class="orp-card" aria-labelledby="orp-preset-title"><div class="orp-section-head"><div><h2 id="orp-preset-title">1. Choose a report profile</h2><p>Profiles set a minimum evidence scope as well as presentation; appearance can be adjusted below.</p></div></div><div class="orp-choice-grid" id="orp-presets">${app.BUILTIN_TEMPLATES.map((template, index) => `<label class="orp-choice"><input type="radio" name="preset" value="${app.escapeHtml(template.id)}" ${index === 2 ? "checked" : ""}><strong>${app.escapeHtml(template.name)}</strong><span>${app.escapeHtml(template.description)}</span></label>`).join("")}</div></section>
-<section class="orp-card" aria-labelledby="orp-format-title"><div class="orp-section-head"><div><h2 id="orp-format-title">2. Choose a format</h2><p>HTML is the best fully offline experience; Excel is best for analysis.</p></div></div><div class="orp-choice-grid orp-format-grid" id="orp-formats"><label class="orp-choice"><input type="radio" name="format" value="html" checked><strong>Offline HTML</strong><span>Searchable, navigable, single-file report.</span></label><label class="orp-choice"><input type="radio" name="format" value="xlsx"><strong>Excel</strong><span>Typed workbook for sorting and analysis.</span></label><label class="orp-choice"><input type="radio" name="format" value="docx"><strong>Word</strong><span>Fixed, editable management document.</span></label><label class="orp-choice"><input type="radio" name="format" value="print"><strong>PDF</strong><span>Opens a print-ready view; choose Save as PDF.</span></label></div>
-<div id="orp-document-options" class="orp-document-options" hidden><fieldset><legend>Document content</legend><label class="orp-check"><input type="radio" name="document-mode" value="summary" checked> Executive summary</label><label class="orp-check"><input type="radio" name="document-mode" value="register"> Summary + compact issue register</label><div id="orp-scope-options" hidden><strong>Issue scope</strong><label class="orp-check"><input type="radio" name="issue-scope" value="active" checked> Actionable only (accepted and closed issues excluded)</label><label class="orp-check"><input type="radio" name="issue-scope" value="all"> All collected issues</label><small>Word supports at most 2,000 issue rows. Use Excel for larger registers.</small></div></fieldset></div>
-<details><summary>Data-only formats</summary><div class="orp-choice-grid"><label class="orp-choice"><input type="radio" name="format" value="csv"><strong>Issues CSV</strong><span>Flat issue rows for other tools.</span></label><label class="orp-choice"><input type="radio" name="format" value="json"><strong>JSON snapshot</strong><span>Full collected model and manifest.</span></label></div></details></section>
-<section class="orp-card"><details id="orp-advanced"><summary>Data scope and appearance</summary><div class="orp-advanced-grid"><div><h3>Data scope</h3><fieldset><legend>Include</legend><label class="orp-check"><input id="orp-issues" type="checkbox" checked> Issues</label><label class="orp-check"><input id="orp-components" type="checkbox" checked> File/component inventory</label><label class="orp-check"><input id="orp-analyses" type="checkbox" checked> Last 100 analysis events</label><label class="orp-check"><input id="orp-trends" type="checkbox"> Historical metric trends</label><label class="orp-check"><input id="orp-people" type="checkbox"> Assignee and author identifiers</label></fieldset><label>Maximum issues<input id="orp-max-issues" type="number" value="10000" min="1" max="10000"></label><small>Incomplete and unavailable datasets remain visible. Metric trends are distinct from the analysis-event timeline.</small></div><div><h3>Appearance</h3><label>Report title<input id="orp-title" type="text" maxlength="160"></label><label>Subtitle<input id="orp-subtitle" type="text" maxlength="240"></label><label>Accent color<input id="orp-color" type="color"></label><label>Introduction<textarea id="orp-intro" maxlength="2000"></textarea></label><label>Footer<textarea id="orp-footer" maxlength="1000"></textarea></label><fieldset><legend>Sections</legend><label class="orp-check"><input id="orp-sec-summary" type="checkbox"> Summary</label><label class="orp-check"><input id="orp-sec-measures" type="checkbox"> Measures</label><label class="orp-check"><input id="orp-sec-issues" type="checkbox"> Issues</label><label class="orp-check"><input id="orp-sec-components" type="checkbox"> Files</label><label class="orp-check"><input id="orp-sec-analyses" type="checkbox"> Analyses</label><label class="orp-check"><input id="orp-sec-trends" type="checkbox"> Trends</label><label class="orp-check"><input id="orp-sec-dataQuality" type="checkbox"> Data confidence</label></fieldset><small>Saved templates retain presentation and minimum evidence requirements for this browser origin.</small><div class="orp-actions"><button type="button" id="orp-save-template">Save template</button><button type="button" id="orp-use-template">Use saved</button><button type="button" id="orp-delete-template">Delete saved</button><button type="button" id="orp-export-template">Export</button><button type="button" id="orp-import-template">Import</button><input class="orp-file" id="orp-template-file" type="file" accept="application/json,.json"></div></div></div></details></section>
-<div class="orp-submit"><button class="orp-primary" id="orp-create" type="submit">Create offline HTML</button><button id="orp-cancel" type="button" hidden>Cancel</button><progress id="orp-progress" class="orp-progress" aria-label="Report creation progress" max="100" value="0" hidden></progress><div id="orp-status" class="orp-status" role="status" aria-live="polite">Ready to create.</div></div></form><div class="orp-end-space" aria-hidden="true"></div></main>`;
-
-    root.querySelector(".orp-mode-link").setAttribute("href", `${contextPath}/extension/offlinereport/portfolio_page`);
-    const releaseViewport = fitScrollViewport(root.querySelector(".orp"));
-
+    root.innerHTML = `<main class="page page-limited opf"><header class="opf-hero"><div><span class="opf-kicker">Portfolio reporting · current-user authority</span><h1>Engineering decision ledger</h1><p>Compare authorized projects without turning missing data into good news. Every selected project keeps its own collection outcome and evidence.</p></div><div><a href="/projects">Open a project for a single-project report</a></div></header><div class="opf-warning"><strong>Portable data warning:</strong> reports leave SonarQube access control after download. Source code is never collected; people identifiers remain off unless explicitly enabled.</div><form id="opf-form" class="opf-form"><section class="opf-card"><div class="opf-step"><b>01</b><div><h2>Report mode</h2><p>The supported global page provides portfolio reports. Single-project reporting remains in each project's Extensions menu.</p></div></div><div class="opf-mode"><div><strong>Single project</strong><p>Open from a project to retain its branch or pull-request context.</p></div><div class="active"><strong>Portfolio / multi-project</strong><p>Main-branch project comparison using only projects visible to this signed-in user.</p></div></div></section><section class="opf-card"><div class="opf-step"><b>02</b><div><h2>Projects</h2><p>Search and select up to ${app.MAX_PORTFOLIO_PROJECTS} visible projects. Duplicate identifiers are ignored.</p></div></div><div class="opf-tools"><label>Search projects<input id="opf-search" type="search" placeholder="Project name or key"></label><label>Filter<select id="opf-filter"><option value="">All visible projects</option><option value="selected">Selected only</option></select></label><button id="opf-select-visible" type="button">Select all visible</button><button id="opf-clear" type="button">Clear</button></div><p class="opf-count" id="opf-count">Loading visible projects…</p><div class="opf-projects" id="opf-projects" role="group" aria-label="Visible SonarQube projects"><div class="opf-empty">Reading the projects this user can browse…</div></div></section><section class="opf-card"><div class="opf-step"><b>03</b><div><h2>Data scope</h2><p>Portfolio exports are bounded to ${MAX_PORTFOLIO_TOTAL_ISSUES.toLocaleString()} requested issue rows and ${MAX_PORTFOLIO_TOTAL_COMPONENTS.toLocaleString()} component rows in total. Historical metrics are separate from analysis events.</p></div></div><div class="opf-scope"><fieldset><legend>Include per project</legend><label class="opf-check"><input id="opf-issues" type="checkbox" checked> Issues</label><label class="opf-check"><input id="opf-components" type="checkbox" checked> File/component inventory</label><label class="opf-check"><input id="opf-analyses" type="checkbox"> Analysis event timeline</label><label class="opf-check"><input id="opf-trends" type="checkbox"> Historical metric trends</label><label class="opf-check"><input id="opf-people" type="checkbox"> Assignee and author identifiers</label></fieldset><div><label>Maximum issues per project<input id="opf-max-issues" type="number" min="1" max="10000" value="${DEFAULT_PORTFOLIO_ISSUES_PER_PROJECT}"></label><label>Maximum components per project<input id="opf-max-components" type="number" min="1" max="10000" value="${DEFAULT_PORTFOLIO_COMPONENTS_PER_PROJECT}"></label><label>Concurrent projects<select id="opf-concurrency"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select></label><label class="opf-check"><input id="opf-ranking" type="checkbox" checked> Order projects by the documented factual attention comparator</label></div></div></section><section class="opf-card"><div class="opf-step"><b>04</b><div><h2>Report profile</h2><p>Profiles set minimum evidence requirements as well as presentation.</p></div></div><div class="opf-grid">${app.BUILTIN_TEMPLATES.map((item, index) => `<label class="opf-choice"><input type="radio" name="profile" value="${app.escapeHtml(item.id)}" ${index === 4 ? "checked" : ""}><strong>${app.escapeHtml(item.name)}</strong><span>${app.escapeHtml(item.description)}</span></label>`).join("")}</div></section><section class="opf-card"><div class="opf-step"><b>05</b><div><h2>Output</h2><p>Every format can reuse the same frozen Model v3 snapshot and report ID.</p></div></div><div class="opf-grid opf-output"><label class="opf-choice"><input type="radio" name="format" value="html" checked><strong>Offline HTML</strong><span>Interactive executive dashboard and drill-down.</span></label><label class="opf-choice"><input type="radio" name="format" value="xlsx"><strong>Excel</strong><span>Scorecard, evidence and issue analysis sheets.</span></label><label class="opf-choice"><input type="radio" name="format" value="docx"><strong>Word</strong><span>Bounded formal executive review.</span></label><label class="opf-choice"><input type="radio" name="format" value="print"><strong>PDF</strong><span>Print-ready HTML; choose Save as PDF.</span></label><label class="opf-choice"><input type="radio" name="format" value="csv"><strong>Issues CSV</strong><span>Machine-readable register with project columns.</span></label><label class="opf-choice"><input type="radio" name="format" value="json"><strong>JSON</strong><span>Full source, normalized, derived and evidence model.</span></label></div><div id="opf-doc-options" class="opf-doc-options" hidden><fieldset><legend>Document content</legend><label class="opf-check"><input type="radio" name="document-mode" value="summary" checked> Executive summary and project scorecard</label><label class="opf-check"><input type="radio" name="document-mode" value="register"> Summary plus compact issue register</label><div id="opf-issue-scope" hidden><label class="opf-check"><input type="radio" name="issue-scope" value="active" checked> Actionable issues only</label><label class="opf-check"><input type="radio" name="issue-scope" value="all"> All collected issues</label><small>Word refuses more than ${app.MAX_DOCX_ISSUES} selected issue rows.</small></div></fieldset></div></section><section class="opf-card"><div class="opf-step"><b>06</b><div><h2>Generate</h2><p>Collection continues across independent project failures. Cancel aborts compatible same-origin requests, stops local work, and never downloads a cancelled artifact.</p></div></div><div class="opf-submit"><button class="opf-primary" id="opf-create" type="submit">Create offline HTML</button><button id="opf-cancel" type="button" hidden>Cancel</button><progress id="opf-progress" class="opf-progress" max="1" value="0" hidden></progress><div id="opf-status" class="opf-status" role="status" aria-live="polite">Select projects to begin.</div></div><div id="opf-live-summary" class="opf-summary" hidden></div></section></form></main>`;
+    root.querySelector(".opf-hero a").setAttribute("href", `${contextPath}/projects`);
     const find = (id) => root.querySelector(`#${id}`);
-    const form = find("orp-form");
-    const dataControls = ["orp-issues", "orp-components", "orp-analyses", "orp-trends", "orp-people", "orp-max-issues"].map(find);
-    find("orp-project").textContent = component ? `${component.name || component.key} (${component.key})` : "Unknown project";
-    find("orp-branch").textContent = app.text(branchLike && (branchLike.name || branchLike.key)) || "Main branch";
-
-    function setStatus(message, kind) {
-      const status = find("orp-status");
-      status.textContent = message;
-      status.dataset.kind = kind || "info";
-      status.setAttribute("role", kind === "error" ? "alert" : "status");
+    const form = find("opf-form");
+    const dataControls = ["opf-issues", "opf-components", "opf-analyses", "opf-trends", "opf-people", "opf-max-issues", "opf-max-components", "opf-concurrency", "opf-ranking"].map(find);
+    const viewport = root.querySelector(".opf");
+    function fit() { const top = Math.max(0, viewport.getBoundingClientRect().top); viewport.style.setProperty("--opf-height", `${Math.max(160, (global.visualViewport ? global.visualViewport.height : global.innerHeight) - top - 12)}px`); }
+    global.addEventListener("resize", fit, { passive: true });
+    if (global.visualViewport) global.visualViewport.addEventListener("resize", fit, { passive: true });
+    fit();
+    function setStatus(message, kind) { find("opf-status").textContent = message; find("opf-status").dataset.kind = kind || "info"; }
+    function selectedValue(name) { const input = root.querySelector(`input[name="${name}"]:checked`); return input && input.value; }
+    function visibleProjects() {
+      const query = find("opf-search").value.trim().toLowerCase();
+      const selectedOnly = find("opf-filter").value === "selected";
+      return projects.filter((project) => (!query || `${project.name} ${project.key}`.toLowerCase().includes(query)) && (!selectedOnly || selected.has(project.key)));
     }
-
-    function selected(name) {
-      const input = root.querySelector(`input[name="${name}"]:checked`);
-      return input && input.value;
+    function renderProjects() {
+      const visible = visibleProjects();
+      find("opf-projects").innerHTML = visible.length ? visible.map((project) => `<label class="opf-project"><input type="checkbox" data-project-key="${app.escapeHtml(project.key)}" ${selected.has(project.key) ? "checked" : ""}><span><strong>${app.escapeHtml(project.name)}</strong><code>${app.escapeHtml(project.key)}</code></span><span>${app.escapeHtml(app.qualifierLabel(project.qualifier))}</span></label>`).join("") : `<div class="opf-empty">No visible project matches this filter.</div>`;
+      find("opf-count").textContent = `${selected.size} selected · ${visible.length} shown · ${projects.length} visible to this user`;
+      find("opf-create").disabled = working || selected.size === 0;
     }
-
-    function markChoices() {
-      root.querySelectorAll(".orp-choice").forEach((choice) => {
-        const radio = choice.querySelector("input[type=radio]");
-        choice.classList.toggle("is-selected", !!radio && radio.checked);
-      });
+    function settings() {
+      return {
+        includeIssues: find("opf-issues").checked,
+        includeComponents: find("opf-components").checked,
+        includeAnalyses: find("opf-analyses").checked,
+        includeTrends: find("opf-trends").checked,
+        includePeople: find("opf-people").checked,
+        maxIssues: Math.max(1, Math.min(10000, Number(find("opf-max-issues").value) || DEFAULT_PORTFOLIO_ISSUES_PER_PROJECT)),
+        maxComponents: Math.max(1, Math.min(10000, Number(find("opf-max-components").value) || DEFAULT_PORTFOLIO_COMPONENTS_PER_PROJECT)),
+        concurrency: Math.max(1, Math.min(4, Number(find("opf-concurrency").value) || 3)),
+        rankProjects: find("opf-ranking").checked
+      };
     }
-
-    function showTemplate(template) {
-      currentTemplate = app.normalizeTemplate(template);
-      find("orp-title").value = currentTemplate.title;
-      find("orp-subtitle").value = currentTemplate.subtitle;
-      find("orp-color").value = currentTemplate.accentColor;
-      find("orp-intro").value = currentTemplate.intro;
-      find("orp-footer").value = currentTemplate.footer;
-      ["summary", "measures", "issues", "components", "analyses", "trends", "dataQuality"].forEach((key) => { find(`orp-sec-${key}`).checked = currentTemplate.sections[key]; });
-      applyTemplateRequirements(currentTemplate);
+    function chosenProjects() { return projects.filter((project) => selected.has(project.key)); }
+    function currentSignature() { return portfolioSnapshotSignature(chosenProjects(), settings()); }
+    function markStale() {
+      if (!snapshot || preparedSignature === currentSignature()) return;
+      setStatus("Prepared data is stale. Create again to recollect the changed project/data scope.", "stale");
     }
-
-    function applyTemplateRequirements(template) {
+    function applyTemplateRequirements(selectedTemplate) {
       const enabled = [];
-      (app.requiredDatasetKeys ? app.requiredDatasetKeys(template) : []).forEach((key) => {
-        const control = find(`orp-${key}`);
+      (app.requiredDatasetKeys ? app.requiredDatasetKeys(selectedTemplate) : []).forEach((key) => {
+        const control = find(`opf-${key}`);
         if (!control || control.checked || key === "people") return;
         control.checked = true;
         enabled.push(key);
       });
       return enabled;
     }
-
-    function readTemplateForm() {
-      return app.normalizeTemplate({
-        ...currentTemplate, id: "custom", name: "Custom report",
-        title: find("orp-title").value, subtitle: find("orp-subtitle").value,
-        accentColor: find("orp-color").value, intro: find("orp-intro").value,
-        footer: find("orp-footer").value,
-        sections: Object.fromEntries(["summary", "measures", "issues", "components", "analyses", "trends", "dataQuality"].map((key) => [key, find(`orp-sec-${key}`).checked]))
-      });
+    async function ensurePortfolioSnapshot(projectSelection, collectionSettings) {
+      const signature = portfolioSnapshotSignature(projectSelection, collectionSettings);
+      if (snapshot && preparedSignature === signature) return snapshot;
+      controller = new AbortController();
+      const report = await app.collectPortfolio(projectSelection, collectionSettings, (progress) => {
+        find("opf-progress").value = progress.completed || 0;
+        setStatus(progress.message || `Analysing ${progress.completed} of ${progress.total} projects`);
+        liveSummary(progress);
+      }, controller.signal);
+      if (controller.signal.aborted) throw new DOMException("Export cancelled", "AbortError");
+      snapshot = freezePortfolioSnapshot(report);
+      preparedSignature = signature;
+      return snapshot;
     }
-
-    function dataSettings() {
-      return {
-        includeIssues: find("orp-issues").checked,
-        includeComponents: find("orp-components").checked,
-        includeAnalyses: find("orp-analyses").checked,
-        includeTrends: find("orp-trends").checked,
-        includePeople: find("orp-people").checked,
-        maxIssues: Math.max(1, Math.min(10000, Number(find("orp-max-issues").value) || 10000)),
-        maxComponents: 10000
-      };
-    }
-
-    function currentSignature() { return snapshotSignature(component, branchLike, dataSettings()); }
-
-    function markStale() {
-      if (!snapshot || currentSignature() === preparedSignature) return;
-      find("orp-cache").textContent = "Data needs refresh";
-      setStatus("Data needs refresh. Create again to collect the changed scope.", "stale");
-    }
-
     function updateFormat() {
-      const format = selected("format") || "html";
-      find("orp-create").textContent = `Create ${FORMAT_NAMES[format]}`;
-      find("orp-document-options").hidden = !["docx", "print"].includes(format);
-      find("orp-scope-options").hidden = selected("document-mode") !== "register";
-      markChoices();
+      const format = selectedValue("format") || "html";
+      const labels = { html: "offline HTML", xlsx: "Excel workbook", docx: "Word document", print: "PDF print view", csv: "issues CSV", json: "JSON snapshot" };
+      find("opf-create").textContent = `Create ${labels[format]}`;
+      find("opf-doc-options").hidden = !["docx", "print"].includes(format);
+      find("opf-issue-scope").hidden = selectedValue("document-mode") !== "register";
     }
-
     function setWorking(value, cancellable) {
       working = value;
-      root.querySelectorAll("input,textarea,select,button").forEach((control) => { control.disabled = value; });
-      find("orp-cancel").disabled = !value || cancellable === false;
-      find("orp-cancel").hidden = !value || cancellable === false;
-      find("orp-progress").hidden = !value;
-      if (!value) {
-        find("orp-use-template").disabled = !readStoredTemplate();
-        find("orp-delete-template").disabled = !readStoredTemplate();
-      }
+      root.querySelectorAll("input,select,button").forEach((control) => { control.disabled = value; });
+      find("opf-cancel").hidden = !value || cancellable === false;
+      find("opf-cancel").disabled = !value || cancellable === false;
+      find("opf-progress").hidden = !value;
+      if (!value) renderProjects();
     }
-
     async function confirmDownloadAllowed() {
       await new Promise((resolve) => global.setTimeout(resolve, 0));
       if (controller && controller.signal.aborted) throw new DOMException("Export cancelled", "AbortError");
     }
-
-    function effectiveTemplate(template, format, mode) {
-      if (format !== "print") return app.normalizeTemplate(template);
-      return app.normalizeTemplate({
-        ...template,
-        sections: {
-          ...template.sections,
-          issues: mode === "register" && !!template.sections.issues,
-          components: false,
-          analyses: false,
-          trends: false
-        }
-      });
+    function liveSummary(progress) {
+      const host = find("opf-live-summary");
+      const outcomes = progress.outcomes || {};
+      host.hidden = false;
+      host.innerHTML = [["Complete", outcomes.complete || 0], ["Partial", outcomes.partial || 0], ["Failed", outcomes.failed || 0], ["Denied", outcomes.permission_denied || 0], ["Pending", Math.max(0, progress.total - progress.completed)]].map(([key, value]) => `<div><span>${key}</span><strong>${value}</strong></div>`).join("");
     }
-
-    function fileBase(report) {
-      return `${report.project.key}-${new Date(report.generatedAt).toISOString().slice(0, 10)}-sonarqube-report`;
-    }
-
-    async function ensureSnapshot() {
-      const signature = currentSignature();
-      if (snapshot && preparedSignature === signature) return snapshot;
-      controller = new AbortController();
-      const progress = find("orp-progress");
-      const collected = await app.collectReport(component, branchLike, dataSettings(), (progressState) => {
-        setStatus(progressState.message || "Collecting current data…");
-        if (progressState.total) { progress.max = progressState.total; progress.value = progressState.current || 0; }
-        else progress.removeAttribute("value");
-      }, controller.signal);
-      if (controller.signal.aborted) throw new DOMException("Export cancelled", "AbortError");
-      snapshot = freezeSnapshot(collected);
-      preparedSignature = signature;
-      find("orp-cache").textContent = `Prepared ${new Date().toLocaleTimeString()}`;
-      return snapshot;
-    }
-
-    async function createOutput(event) {
+    async function generate(event) {
       event.preventDefault();
-      if (working) return;
-      if (!component) { setStatus("Project context is missing. Open this page from a SonarQube project.", "error"); return; }
-      const format = selected("format") || "html";
-      const mode = selected("document-mode") || "summary";
-      const issueScope = selected("issue-scope") || "active";
-      const template = readTemplateForm();
-      const artifactTemplate = effectiveTemplate(template, format, mode);
-      const missingRequired = app.missingRequiredDatasets ? app.missingRequiredDatasets(template, dataSettings()) : [];
-      const issueDataRequired = format === "csv" || (["docx", "print"].includes(format) && mode === "register");
-      if (missingRequired.length || (issueDataRequired && !dataSettings().includeIssues)) {
-        const missing = [...new Set([...missingRequired, ...(issueDataRequired && !dataSettings().includeIssues ? ["issues"] : [])])];
-        setStatus(`This output requires ${missing.join(", ")}. Enable the missing data under Data scope and try again.`, "error");
+      if (working || !selected.size) return;
+      const format = selectedValue("format") || "html";
+      const profileId = selectedValue("profile") || "portfolio";
+      const chosenTemplate = app.normalizeTemplate(app.BUILTIN_TEMPLATES.find((item) => item.id === profileId) || template);
+      const mode = selectedValue("document-mode") || "summary";
+      const issueScope = selectedValue("issue-scope") || "active";
+      const projectSelection = chosenProjects();
+      const collectionSettings = settings();
+      const signature = portfolioSnapshotSignature(projectSelection, collectionSettings);
+      const reusable = snapshot && preparedSignature === signature ? snapshot : null;
+      const initialPreflight = portfolioPreflight(format, projectSelection, collectionSettings, { mode, issueScope, template: chosenTemplate }, reusable);
+      if (!initialPreflight.ok) {
+        setStatus(initialPreflight.errors.join("\n"), "error");
         return;
       }
       let printWindow = null;
-      if (format === "print") {
-        try { printWindow = global.open("", "_blank"); } catch (_) { printWindow = null; }
-        if (printWindow) {
-          try { printWindow.opener = null; } catch (_) { /* retained reference is still used below */ }
-          printWindow.document.write("<!doctype html><meta charset=utf-8><title>Preparing PDF print view…</title><p>Preparing the PDF print view…</p>");
-        }
-      }
-      const usingPreparedData = snapshot && preparedSignature === currentSignature();
-      setWorking(true, !usingPreparedData);
-      setStatus(usingPreparedData ? "Using prepared data…" : "Collecting current data…");
+      if (format === "print") { try { printWindow = global.open("", "_blank"); } catch (_) { printWindow = null; } if (printWindow) { try { printWindow.opener = null; } catch (_) { /* retained reference is still used below */ } printWindow.document.write("<!doctype html><meta charset=utf-8><title>Preparing portfolio print view…</title><p>Collecting portfolio evidence…</p>"); } }
+      setWorking(true, !reusable);
+      find("opf-progress").max = projectSelection.length;
+      find("opf-progress").value = 0;
+      setStatus(reusable ? "Using the prepared portfolio snapshot…" : "Collecting the current portfolio scope…");
       try {
-        const collected = await ensureSnapshot();
+        const collected = await ensurePortfolioSnapshot(projectSelection, collectionSettings);
         if (controller && controller.signal.aborted) throw new DOMException("Export cancelled", "AbortError");
-        const artifactMode = format === "html" ? "interactive" : format === "csv" ? "register" : ["xlsx", "json"].includes(format) ? "full" : mode;
-        const artifactIssueScope = ["docx", "print"].includes(format) ? issueScope : "all-collected";
-        const printRepresentedDatasets = format === "print" && collected.collectionScope && collected.collectionScope.issues ? ["issues"] : [];
-        const printExcludedDatasets = format === "print"
-          ? (app.requiredDatasetKeys ? app.requiredDatasetKeys(artifactTemplate) : []).filter((key) => !printRepresentedDatasets.includes(key))
+        const finalPreflight = portfolioPreflight(format, projectSelection, collectionSettings, { mode, issueScope, template: chosenTemplate }, collected);
+        if (!finalPreflight.ok) throw new Error(finalPreflight.errors.join(" "));
+        const actual = portfolioActualCounts(collected, issueScope);
+        const artifactMode = format === "html" ? "interactive"
+          : ["xlsx", "json"].includes(format) ? "full"
+            : format === "csv" ? "register" : mode;
+        const artifactIssueScope = ["xlsx", "json", "csv"].includes(format) ? "all-collected" : issueScope;
+        const renderedOnly = format === "print";
+        const renderedDatasets = renderedOnly && collectionSettings.includeIssues ? ["issues"] : [];
+        const excludedDatasets = renderedOnly
+          ? (app.requiredDatasetKeys ? app.requiredDatasetKeys(chosenTemplate) : []).filter((key) => !renderedDatasets.includes(key))
           : [];
+        const renderedCounts = renderedOnly ? {
+          projects: actual.projects,
+          issues: mode === "register" && chosenTemplate.sections.issues ? actual.selectedIssues : 0,
+          components: 0,
+          analyses: 0,
+          trendObservations: 0
+        } : null;
         const report = app.createArtifactReport(collected, format, {
-          template: artifactTemplate,
+          template: chosenTemplate,
           purpose: format === "html" ? "interactive" : format === "print" ? "print" : ["csv", "json"].includes(format) ? "data" : "document",
           mode: artifactMode,
           issueScope: artifactIssueScope,
-          scope: format === "print" ? {
+          exportedCounts: renderedCounts || undefined,
+          scope: renderedOnly ? {
             fullModel: false,
-            representedDatasets: printRepresentedDatasets,
-            excludedDatasets: printExcludedDatasets,
+            representedDatasets: renderedDatasets,
+            excludedDatasets,
             exclusionReason: mode === "summary" ? "user_selected_print_summary" : "user_selected_print_register",
             representation: "rendered_views_only",
-            representationByDataset: printRepresentedDatasets.includes("issues") ? {
+            representationByDataset: renderedDatasets.includes("issues") ? {
               issues: mode === "register" ? "raw_rows_and_reconciled_aggregates" : "reconciled_aggregates_only"
             } : {}
-          } : undefined
+          } : format === "html" ? {
+            fullModel: true,
+            representation: "full_model_v3_and_rendered_views",
+            visibleIssueScope: issueScope
+          } : undefined,
+          warnings: finalPreflight.warnings
         });
-        const base = fileBase(report);
+        const base = `sonarqube-portfolio-${new Date(report.exportedAt).toISOString().slice(0, 10)}`;
         let finalArtifactComplete = report.artifactComplete;
         let exporterWarnings = [...(report.artifact && report.artifact.warnings || [])];
         if (format === "html") {
-          const html = app.buildHtmlReport(report, artifactTemplate, { purpose: "interactive" });
+          const html = app.buildHtmlReport(report, chosenTemplate, { purpose: "interactive", issueScope });
           await confirmDownloadAllowed();
           app.downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), app.safeFileName(base, "html"));
         } else if (format === "xlsx") {
           const result = app.buildXlsx(report);
-          if (result.artifactComplete !== undefined) finalArtifactComplete = !!result.artifactComplete;
-          exporterWarnings = [...new Set([...exporterWarnings, ...(result.warnings || [])])];
+          if (result && result.artifactComplete !== undefined) finalArtifactComplete = !!result.artifactComplete;
+          exporterWarnings = [...new Set([...exporterWarnings, ...(result && Array.isArray(result.warnings) ? result.warnings : [])])];
           await confirmDownloadAllowed();
           app.downloadBlob(result.blob, app.safeFileName(base, "xlsx"));
         } else if (format === "docx") {
-          const includeRegister = mode === "register";
-          const result = app.buildDocx(report, artifactTemplate, { includeIssueRegister: includeRegister, issueScope });
+          const result = app.buildDocx(report, chosenTemplate, { includeIssueRegister: mode === "register", issueScope });
           await confirmDownloadAllowed();
           app.downloadBlob(result.blob, app.safeFileName(base, "docx"));
-        } else if (format === "print") {
-          const includeRegister = mode === "register";
-          const html = app.buildHtmlReport(report, artifactTemplate, {
-            purpose: "print", mode, issueScope
-          });
-          await confirmDownloadAllowed();
-          if (printWindow && !printWindow.closed) {
-            printWindow.document.open();
-            printWindow.document.write(html);
-            printWindow.document.close();
-          } else {
-            app.downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), app.safeFileName(`${base}-print-view`, "html"));
-          }
         } else if (format === "csv") {
-          if (!report.collectionScope.issues) throw new Error("Issues were not included in the prepared data. Enable Issues under Advanced and try again.");
           await confirmDownloadAllowed();
-          app.downloadBlob(new Blob([app.toCsv(app.issueRows(report))], { type: "text/csv;charset=utf-8" }), app.safeFileName(`${report.project.key}-issues`, "csv"));
+          app.downloadBlob(new Blob([app.toCsv(app.issueRows(report))], { type: "text/csv;charset=utf-8" }), app.safeFileName(`${base}-issues`, "csv"));
         } else if (format === "json") {
           const content = JSON.stringify({ manifest: app.reportManifest(report), report }, null, 2);
           await confirmDownloadAllowed();
           app.downloadBlob(new Blob([content], { type: "application/json" }), app.safeFileName(base, "json"));
         }
-        const completion = format === "print"
-          ? printWindow && !printWindow.closed
-            ? "PDF print view opened. If the print dialog does not appear, select Print / Save as PDF in that view."
-            : "The browser blocked the PDF window, so a print-ready HTML file was downloaded. Open it and select Print / Save as PDF."
-          : `${FORMAT_NAMES[format]} created. Choose another format to reuse the prepared data.`;
-        const completenessMessage = finalArtifactComplete
-          ? "This artifact is complete for its declared scope."
-          : "This artifact contains partial evidence; review Data Confidence and artifact warnings.";
-        const completionWithWarnings = `${completion}\n${completenessMessage}${exporterWarnings.length ? `\n${exporterWarnings.join(" ")}` : ""}`;
-        setStatus(completionWithWarnings, finalArtifactComplete ? "success" : "error");
+        else if (format === "print") {
+          const html = app.buildHtmlReport(report, chosenTemplate, { purpose: "print", mode, issueScope });
+          await confirmDownloadAllowed();
+          if (printWindow && !printWindow.closed) { printWindow.document.open(); printWindow.document.write(html); printWindow.document.close(); }
+          else app.downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), app.safeFileName(`${base}-print-view`, "html"));
+        }
+        const warningText = exporterWarnings.length ? ` Export warnings: ${exporterWarnings.join(" ")}` : "";
+        setStatus(`${report.portfolioSummary.projectsAnalysed} of ${report.portfolioSummary.projectsSelected} projects analysed. Snapshot ${report.reportId} remains prepared for another format. ${finalArtifactComplete ? "This artifact is complete for its declared scope." : "This artifact contains partial evidence; review Data Confidence."}${warningText}`, finalArtifactComplete ? "success" : "error");
       } catch (error) {
         if (printWindow && !printWindow.closed) printWindow.close();
-        setStatus(error.name === "AbortError" ? "Export cancelled. No report was downloaded." : `Could not create ${FORMAT_NAMES[format]}: ${error.message}`, error.name === "AbortError" ? "info" : "error");
-      } finally {
-        controller = null;
-        setWorking(false);
-      }
+        setStatus(error && error.name === "AbortError" ? "Portfolio collection cancelled. No report was downloaded." : `Could not create portfolio report: ${error.message}`, error && error.name === "AbortError" ? "info" : "error");
+      } finally { controller = null; setWorking(false); }
     }
-
+    find("opf-search").addEventListener("input", renderProjects);
+    find("opf-filter").addEventListener("change", renderProjects);
+    find("opf-projects").addEventListener("change", (event) => {
+      const key = event.target && event.target.dataset.projectKey;
+      if (!key) return;
+      if (event.target.checked) {
+        if (selected.size >= app.MAX_PORTFOLIO_PROJECTS) { event.target.checked = false; setStatus(`Select at most ${app.MAX_PORTFOLIO_PROJECTS} projects.`, "error"); return; }
+        selected.add(key);
+      } else selected.delete(key);
+      renderProjects();
+      markStale();
+    });
+    find("opf-select-visible").addEventListener("click", () => { visibleProjects().forEach((project) => { if (selected.size < app.MAX_PORTFOLIO_PROJECTS) selected.add(project.key); }); renderProjects(); markStale(); if (visibleProjects().length > app.MAX_PORTFOLIO_PROJECTS) setStatus(`Selected the first ${app.MAX_PORTFOLIO_PROJECTS} visible projects; the supported portfolio boundary was reached.`); });
+    find("opf-clear").addEventListener("click", () => { selected.clear(); renderProjects(); markStale(); setStatus("Project selection cleared."); });
     root.addEventListener("change", (event) => {
-      if (event.target.name === "preset") {
-        const template = app.BUILTIN_TEMPLATES.find((item) => item.id === event.target.value);
-        if (template) {
-          showTemplate(template);
-          markStale();
-          const required = app.requiredDatasetKeys ? app.requiredDatasetKeys(currentTemplate) : [];
-          if (required.length) setStatus(`Profile minimum evidence: ${required.join(", ")}.`);
-        }
-      }
       if (["format", "document-mode"].includes(event.target.name)) updateFormat();
+      if (event.target.name === "profile") {
+        const selectedTemplate = app.normalizeTemplate(app.BUILTIN_TEMPLATES.find((item) => item.id === event.target.value) || template);
+        const enabled = applyTemplateRequirements(selectedTemplate);
+        if (enabled.length) setStatus(`Enabled profile-required data: ${enabled.join(", ")}.`);
+        markStale();
+      }
       if (dataControls.includes(event.target)) markStale();
-      markChoices();
     });
-    find("orp-max-issues").addEventListener("input", markStale);
-    form.addEventListener("submit", createOutput);
-    find("orp-cancel").addEventListener("click", () => { if (controller) controller.abort(); });
-    find("orp-save-template").addEventListener("click", () => {
-      try { currentTemplate = readTemplateForm(); writeStoredTemplate(currentTemplate); setStatus("Template saved in this browser.", "success"); setWorking(false); }
-      catch (error) { setStatus(error.message, "error"); }
-    });
-    find("orp-use-template").addEventListener("click", () => { const saved = readStoredTemplate(); if (saved) { showTemplate(saved); setStatus("Saved template applied."); } });
-    find("orp-delete-template").addEventListener("click", () => { localStorage.removeItem(STORAGE_KEY); showTemplate(app.BUILTIN_TEMPLATES[2]); setWorking(false); setStatus("Saved template deleted."); });
-    find("orp-export-template").addEventListener("click", () => { app.downloadBlob(new Blob([JSON.stringify(readTemplateForm(), null, 2)], { type: "application/json" }), "sonarqube-report-template.json"); });
-    find("orp-import-template").addEventListener("click", () => find("orp-template-file").click());
-    find("orp-template-file").addEventListener("change", async (event) => {
-      try {
-        const file = event.target.files && event.target.files[0];
-        if (!file) return;
-        if (file.size > app.MAX_TEMPLATE_BYTES) throw new Error("Template exceeds the 64 KiB size limit.");
-        showTemplate(app.parseTemplateJson(await file.text()));
-        setStatus("Template imported. Save it to retain it in this browser.", "success");
-      } catch (error) { setStatus(error.message, "error"); }
-      event.target.value = "";
-    });
-
-    showTemplate(currentTemplate);
+    find("opf-max-issues").addEventListener("input", markStale);
+    find("opf-max-components").addEventListener("input", markStale);
+    form.addEventListener("submit", generate);
+    find("opf-cancel").addEventListener("click", () => { if (controller) controller.abort(); });
     setWorking(false);
     updateFormat();
-    return () => { if (controller) controller.abort(); releaseViewport(); root.textContent = ""; };
+    applyTemplateRequirements(template);
+    app.listVisibleProjects(null, (progress) => setStatus(progress.message)).then((result) => { projects = result.projects; renderProjects(); setStatus(projects.length ? "Select the projects to include." : "No project is visible to this user.", projects.length ? "info" : "error"); }).catch((error) => { setStatus(`Could not list visible projects: ${error.message}`, "error"); find("opf-projects").innerHTML = `<div class="opf-empty">Project inventory is unavailable. Refresh after confirming the signed-in session.</div>`; });
+    return () => { if (controller) controller.abort(); global.removeEventListener("resize", fit); if (global.visualViewport) global.visualViewport.removeEventListener("resize", fit); root.textContent = ""; };
   }
 
-  Object.assign(app, { start, readStoredTemplate, writeStoredTemplate, freezeSnapshot, snapshotSignature, fitScrollViewport, UI_CSS });
+  Object.assign(app, {
+    MAX_PORTFOLIO_TOTAL_ISSUES,
+    MAX_PORTFOLIO_TOTAL_COMPONENTS,
+    DEFAULT_PORTFOLIO_ISSUES_PER_PROJECT,
+    DEFAULT_PORTFOLIO_COMPONENTS_PER_PROJECT,
+    portfolioSnapshotSignature,
+    portfolioPreflight,
+    startPortfolio,
+    freezePortfolioSnapshot,
+    PORTFOLIO_UI_CSS
+  });
 })(window);
 
 (function (global) {
   "use strict";
 
   if (typeof global.registerExtension !== "function") return;
-  global.registerExtension("offlinereport/report_page", function (options) {
-    return global.OfflineReport.start(options.el, options);
+  global.registerExtension("offlinereport/portfolio_page", function (options) {
+    return global.OfflineReport.startPortfolio(options.el, options);
   });
 })(window);

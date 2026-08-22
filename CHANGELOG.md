@@ -5,6 +5,47 @@ and intends to use [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## 2.0.0 - 2026-08-22 (enterprise candidate)
+
+### Added
+
+- Added a non-admin global Portfolio Reporting page while preserving the existing project-scoped page.
+- Added Report Model v3 with independent per-project outcomes, collection evidence, deterministic issue analytics, age/effort dimensions, quality-gate reasons, weighted portfolio coverage/duplication and optional factual attention ordering.
+- Added Browse-filtered project inventory, main-branch multi-project collection for up to 50 unique projects, a one-to-four worker pool, actual progress/outcomes and responsive local cancellation.
+- Added optional historical metric trends from the public measure-history API, explicitly separate from analysis events.
+- Added executive and technical portfolio HTML, thirteen-sheet portfolio XLSX, bounded portfolio DOCX, project-aware CSV and full JSON manifest/model output.
+- Added authoritative reporting formulas, API contract, performance boundaries and eight-persona/data-auditor validation documents.
+- Added immutable per-artifact provenance (`format`, purpose, mode, issue scope, export time, exported counts and artifact completeness) while retaining collection time, collection completeness and report identity.
+- Added same-origin, credentialed Fetch transport with context-path discovery, real transport cancellation and a compatibility fallback for older hosts.
+- Added test-execution metrics, new-code coverage denominators and bounded per-file coverage/duplication/complexity measures without collecting source content.
+- Added portfolio collect-once/export-many reuse and format-specific preflight budgets of 25,000 issues and 50,000 components in total; Word issue registers remain capped at 2,000 rows.
+
+### Changed
+
+- Advanced the machine-readable report contract from Model v2 to Model v3 and replaced the flat CSV-only contract with a self-contained manifest envelope. This is a deliberate breaking change for automated consumers and is the reason for the 2.0 major version.
+- Kept imported report-template schemas 1 and 2 compatible; the major version change applies to generated report artifacts, not saved template migration.
+
+### Fixed
+
+- Fixed branch-scoped reports being marked incomplete when SonarQube omitted `analysisDate` from the repeated measures response; consistency now uses a deterministic before/after measure fingerprint.
+- Treated the explicitly selected latest-100 analysis-event scope as complete when all 100 requested events are reconciled, while retaining the server's total as provenance.
+- Preserved missing XLSX numeric values as empty instead of coercing them to zero.
+- Corrected Model v3 issue-column typing after the developer register expansion.
+- Corrected the portfolio DOCX renderer contract found by cross-format reconciliation testing.
+- Fixed cancellation being converted into an incomplete report by optional collectors; cancelled work can no longer reach a download operation.
+- Separated collection completion timestamps from artifact export timestamps and preserved one report ID when exporting multiple formats from a prepared snapshot.
+
+### Security
+
+- Retained same-origin current-user authorization, the fixed API allowlist, people opt-in, zero-network hashed-CSP HTML, hostile-content escaping, formula neutralization and fixed macro-free/no-external-relationship Office packages.
+- Pinned Maven lifecycle plugins and added keyless GitHub artifact attestations, source-revision/digest stamping, provenance manifests and SHA-256 release checksums.
+- Hardened clean-tag publication with non-persisted checkout credentials, per-tag non-cancelling concurrency, default-branch ancestry enforcement and remote-tag revalidation immediately before attestation and publication.
+
+### Tests
+
+- Expanded the Node suite with formula, lifecycle, trends, visible-inventory, duplicate project, boundary, transport cancellation, provenance, preflight, bounded concurrency, guided UI/deep-freeze, snapshot completeness, mixed-outcome and six-format reconciliation coverage.
+- Added a dependency-free real-Chrome gate for all eight built-in profiles, project and portfolio print-scope/PDF reconciliation, a bounded four-scenario export benchmark, and a checksummed release archive retaining the browser and benchmark evidence.
+
 ## 1.3.0 - 2026-08-21 (enterprise candidate)
 
 ### Changed

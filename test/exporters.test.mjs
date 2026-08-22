@@ -111,7 +111,7 @@ test("print-ready HTML discloses exact mode, scope, count, report ID and complet
   assert.match(html, /Complete for selected collection scope/);
   assert.match(html, /id="print-now"/);
   assert.match(html, /choose <strong>Save as PDF<\/strong>/);
-  assert.match(html, /@media print\{\.print-toolbar\{display:none!important\}\}/);
+  assert.match(html, /\.print-toolbar\{display:none!important\}/);
   assert.match(app.REPORT_RUNTIME, /setupPrintView/);
   assert.match(app.REPORT_RUNTIME, /globalThis\.print\(\)/);
 });
@@ -122,7 +122,7 @@ test("excluded datasets are labeled not collected instead of zero", async () => 
   const result = app.buildXlsx(report);
   const archiveText = new TextDecoder().decode(new Uint8Array(await result.blob.arrayBuffer()));
   assert.match(archiveText, /Complete for selected scope/);
-  assert.match(archiveText, /Not collected/);
+  assert.match(archiveText, /Not requested/);
   const html = app.buildHtmlReport(report, app.BUILTIN_TEMPLATES[1]);
   assert.match(html, /"issues":false/);
   assert.match(app.REPORT_RUNTIME, /Issues not collected/);
@@ -148,8 +148,8 @@ test("new-code measures and active-versus-historical issue semantics are explici
     issuePaging: { expected: 3, exported: 3, limit: 10000 }
   });
   const html = app.buildHtmlReport(report, app.BUILTIN_TEMPLATES[1]);
-  assert.match(app.REPORT_RUNTIME, /Open issues/);
-  assert.match(app.REPORT_RUNTIME, /Quality gate /);
+  assert.match(app.REPORT_RUNTIME, /Actionable issues/);
+  assert.match(app.REPORT_RUNTIME, /SonarQube gate result/);
   assert.match(app.REPORT_RUNTIME, /m\.period\.value/);
   assert.match(html, /"value":"57\.5"/);
 
@@ -160,7 +160,10 @@ test("new-code measures and active-versus-historical issue semantics are explici
   assert.match(archiveText, /1\.99%/);
   assert.match(archiveText, /New Code Coverage/);
   assert.doesNotMatch(archiveText, />new_coverage</);
-  assert.match(archiveText, /Maintainability – High/);
+  assert.match(archiveText, /Software Quality/);
+  assert.match(archiveText, />Maintainability</);
+  assert.match(archiveText, /Impact Severity/);
+  assert.match(archiveText, />High</);
   assert.match(archiveText, />Bug</);
   assert.doesNotMatch(archiveText, />BUG</);
   assert.match(archiveText, /Rule Name/);
