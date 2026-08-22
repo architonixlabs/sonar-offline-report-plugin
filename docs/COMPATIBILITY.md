@@ -10,13 +10,13 @@
 | Java bytecode | 11 |
 | Java API surface | `Plugin`, `PageDefinition`, `Page` |
 | Browser integration | `registerExtension`, context-path-aware credentialed `fetch`; `SonarRequest.getJSON` fallback |
-| Tested deployment | Model-equivalent dirty v2.0.0 lab candidate on the exact Linux Docker target; upgrade, page/static smoke and rollback rehearsal pass; exact published v2.0.1 deployment pending |
+| Tested deployment | Exact published v2.0.1 JAR on the qualified Linux Docker target: atomic upgrade, startup/log review, page/static byte-integrity smoke and rollback-backup verification pass. The model-equivalent dirty v2.0.0 candidate also passed an end-to-end rollback rehearsal |
 
-This artifact targets the same 26.6 instance used for the Model v3 lab qualification. It is not advertised as compatible across untested SonarQube or Plugin API major versions; exact published-v2.0.1 deployment evidence is recorded separately after publication.
+This artifact targets the same 26.6 instance used for the Model v3 lab qualification. It is not advertised as compatible across untested SonarQube or Plugin API major versions. The exact published-v2.0.1 deployment is recorded in [its dated validation record](DEPLOYMENT-VALIDATION-V2.0.1-2026-08-22.md).
 
 ## Model v3 compatibility posture
 
-Version 2.0.1 preserves the qualified project page and adds a public `Page.Scope.GLOBAL` page. Automated registration verifies both pages and confirms the portfolio page is not admin-only. The browser bundle adds `/api/components/search` for Browse-filtered inventory and `/api/measures/search_history` for optional trends; both actions and global-page rendering still require exact-candidate qualification against `26.6.0.123539` before controlled pilot.
+Version 2.0.1 preserves the qualified project page and adds a public `Page.Scope.GLOBAL` page. Automated registration verifies both pages and confirms the portfolio page is not admin-only. Both extension shells and exact packaged bundles load on `26.6.0.123539`. The browser bundle adds `/api/components/search` for Browse-filtered inventory and `/api/measures/search_history` for optional trends; authenticated data behavior for both actions and the global page still requires ordinary-user qualification before controlled pilot.
 
 Portfolio mode intentionally supports main branches only. Single-project branch/pull-request behavior is unchanged. Template Schema v2 remains accepted; Model v3 adds fields and does not promise that an older renderer can understand a v3 JSON snapshot.
 
@@ -71,8 +71,10 @@ The installation path and rollback locations are intentionally retained in the p
 | Microsoft Word and LibreOffice DOCX no-repair smoke | Pending |
 | Microsoft Excel and LibreOffice XLSX no-repair smoke | Pending |
 | Open XML SDK validation and large-document resource tests | Pending |
-| Atomic v2.0.0 upgrade, v1.3.0 restore and final v2.0.0 reinstall | Pass on exact Linux Docker target; removal/uninstall remains a separate operational check |
-| Approved SBOM, signing/provenance, support, and vulnerability process | Pending |
+| Exact published v2.0.1 atomic upgrade, one active JAR, startup/route/static integrity and rollback backup | Pass on the qualified Linux Docker target; an additional exact-v2.0.1 restore/reinstall and removal/uninstall remain separate operational checks |
+| Model-equivalent v2.0.0 upgrade, v1.3.0 restore and final v2.0.0 reinstall | Pass on the same Linux Docker target |
+| Release checksums, attestations and SBOM binding | Pass for the exact published assets |
+| Approved tag protection, vulnerability/license policy, support and observability process | Pending |
 
 Until these close, publish this build as a controlled candidate/pilot, not enterprise GA.
 
@@ -90,10 +92,12 @@ Until these close, publish this build as a controlled candidate/pilot, not enter
 
 These automated results do not replace authenticated live qualification of the
 exact tagged artifact. The historical table and digests above apply only to
-v1.2.1. The v2.0.0 exact-candidate upgrade, asset-integrity check, rollback
-rehearsal and final reinstall are recorded in
-[the 2026-08-22 deployment validation](DEPLOYMENT-VALIDATION-2026-08-22.md);
-ordinary-user authorization, data collection and production-policy gates remain open.
+v1.2.1. The exact published-v2.0.1 upgrade and byte-integrity evidence are in
+[the clean-release deployment validation](DEPLOYMENT-VALIDATION-V2.0.1-2026-08-22.md).
+The model-equivalent v2.0.0 rollback rehearsal is recorded in
+[the historical deployment validation](DEPLOYMENT-VALIDATION-2026-08-22.md).
+Ordinary-user authorization, report collection and production-policy gates
+remain open.
 
 ## API and upgrade policy
 

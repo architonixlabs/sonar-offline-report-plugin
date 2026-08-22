@@ -1,10 +1,10 @@
 # Project context: SonarQube Offline Report Plugin v2.0.1
 
 Last consolidated: 2026-08-22. This document describes the v2.0.1 source tree,
-the Model v3 reporting contract, and the historical Linux Docker qualification
-evidence recorded for its model-equivalent dirty v2.0.0 lab candidate. Exact
-published-v2.0.1 deployment evidence is recorded after publication. This is a
-technical handoff, not a certification or enterprise-GA declaration.
+the Model v3 reporting contract, the clean-tag publication, the exact published
+JAR's Linux Docker deployment, and the historical rollback rehearsal performed
+with its model-equivalent dirty v2.0.0 lab candidate. This is a technical
+handoff, not a certification or enterprise-GA declaration.
 
 ## 1. Status and decision
 
@@ -13,24 +13,33 @@ portable reports in the signed-in user's browser. Version 2.0.1 is a
 **production-hardening release candidate**:
 
 - development and deterministic local validation: **GO**;
-- the exact dirty pre-release candidate's Linux Docker installation,
-  route/static smoke test, rollback, and final reinstall: **PASS**;
+- clean-tag build, publication, attestations and checksum verification:
+  **PASS**;
+- exact published-v2.0.1 Linux Docker installation, startup/log review,
+  route/static byte-integrity smoke and rollback-backup verification: **PASS**;
+- end-to-end rollback procedure rehearsal with the model-equivalent dirty
+  pre-release candidate: **PASS**;
 - controlled production pilot: **NO-GO until the authenticated target-server
   authorization and representative portfolio-load gates close**;
 - enterprise GA: **NO-GO** while the security, privacy, Office, accessibility,
-  clean-release provenance, SBOM-policy, and operational gates in section 16
-  remain open.
+  SBOM-policy, tag-governance, and operational gates in section 16 remain open.
 
 The successful deployment does not change the release decision. It proved that
-one exact JAR loads and can be rolled back on the target Docker instance. It did
-not prove ordinary-user data isolation, authenticated report collection, or
-enterprise operational readiness.
+the exact published JAR loads on the target Docker instance, serves the exact
+packaged frontends, and retains a verified immediately previous artifact for
+rollback. The rollback procedure was previously rehearsed end to end, but an
+extra v2.0.1 restore/reinstall cycle was not forced after the successful clean
+deployment. None of this proves ordinary-user data isolation, authenticated
+report collection, representative live load, or enterprise operational
+readiness.
 
 ### Current identity
 
 | Item | Current v2.0.1 value |
 |---|---|
 | Repository | `https://github.com/architonixlabs/sonar-offline-report-plugin` |
+| Release/tag | GitHub prerelease `v2.0.1`; annotated tag retained at `313686aee88e24b076ea5e8259c3c5c28f964c37` |
+| Published JAR SHA-256 | `1B75A14D6447938CD314B8BF2F6720B1AF26573CD47372598C2DBE4B92AD72B1` |
 | Maven coordinates | `com.architonix.sonarqube:sonar-offline-report-plugin:2.0.1` |
 | npm package | `sonar-offline-report-plugin-ui` `2.0.1`, private |
 | License | Apache License 2.0 |
@@ -690,9 +699,9 @@ Portfolio is main-branch only; single-project branch/PR behavior is retained.
 | Word/LibreOffice/OpenXML | **Open.** No-repair open/round-trip, Open XML validation, malicious corpus, accessibility/relationship scan |
 | Large/live mutation/faults | **Open.** Live 0/1/501/9,999/10,000/10,001, changing/duplicate pages, 429/503, `Retry-After`, timeout, cancellation, memory/time and recovery |
 | Accessibility | **Open.** Screen reader, keyboard-only, forced colors, Firefox, 200%/400% zoom, 320 CSS px, and print review |
-| Upgrade/rollback | **Partially closed.** Exact Linux Docker upgrade, rollback, and reinstall pass; clean release artifact, production change approval, removal/uninstall, and any other supported operating model still require acceptance |
-| Signing/provenance | **Workflow implemented, release gate open.** The deployed JAR is a dirty-source candidate and has no clean-tag GitHub attestation |
-| SBOM/license/vulnerability | **Open.** SBOM generated, but exact release scan, license-policy review, vulnerability approval, and retention record are outstanding |
+| Upgrade/rollback | **Partially closed.** The exact published v2.0.1 Linux Docker upgrade, startup, routes and asset integrity pass, and the immediately previous JAR is checksum-verified outside the active volume. The procedure was rehearsed end to end with the model-equivalent candidate; an exact v2.0.1 restore/reinstall cycle, production change approval, removal/uninstall, and other supported operating models still require acceptance |
+| Signing/provenance | **Technical release gate passed; governance open.** Eight published assets have source/workflow attestations and the JAR has a separate CycloneDX predicate. Organizational approval and administrator-enforced `refs/tags/v*` update/deletion protection remain GA gates |
+| SBOM/license/vulnerability | **Partially closed.** The exact published CycloneDX document, checksum, deterministic serial, provenance binding and SBOM attestation verify. Vulnerability/license-policy approval and the organizational retention record remain open |
 | Privacy/records | **Open.** Data classification, people-field purpose, retention/deletion, approved transfer/DLP, and public-project policy |
 | Observability/support | **Open.** Privacy-safe actor/project/scope/result audit, actionable timing/error telemetry, support ownership, vulnerability response |
 | Persona acceptance | **Open.** Source/fixture review passes with findings; accountable target users have not signed off every applicable format |
@@ -705,10 +714,60 @@ artifact.
 
 ## 17. Exact Linux Docker deployment evidence (2026-08-22)
 
-This section records immutable facts about the installed lab candidate. It is
-not a claim that the current worktree or a future release has the same bytes.
+### Published v2.0.1 clean-release deployment
 
-### Target and artifact
+The deployed file was downloaded back from the GitHub prerelease, not copied
+from a local build. Its four primary assets and checksum sidecars were verified
+both locally and in the target staging directory. All eight published files
+also verified against the repository, release workflow, tag ref and exact
+source commit through GitHub artifact attestations; a separate CycloneDX
+predicate binds the finalized SBOM to the JAR.
+
+| Item | Verified value |
+|---|---|
+| Release | [`v2.0.1 - Enterprise Candidate`](https://github.com/architonixlabs/sonar-offline-report-plugin/releases/tag/v2.0.1), prerelease |
+| Release workflow | [run 32573376193](https://github.com/architonixlabs/sonar-offline-report-plugin/actions/runs/32573376193), successful |
+| Source revision | `313686aee88e24b076ea5e8259c3c5c28f964c37` |
+| Target | private Linux Docker lab endpoint (redacted from the public record) |
+| SonarQube | Community Build `26.6.0.123539` |
+| Container/image | `sonarqube-sonarqube-1` / `sonarqube:community` |
+| Persistent extension mount | `sonarqube_sonar-extensions` at `/opt/sonarqube/extensions` |
+| Active file | exactly one `sonar-offline-report-plugin-2.0.1.jar` |
+| Active JAR size | 184,561 bytes |
+| Active/published JAR SHA-256 | `1B75A14D6447938CD314B8BF2F6720B1AF26573CD47372598C2DBE4B92AD72B1` |
+| Project served bundle SHA-256 | `424240D66CE37178EB69A7F95F63052AF2B87DFBC180114642FE2C63A5117533` |
+| Portfolio served bundle SHA-256 | `6B96BE9FEA4C3C6032CF6C58AAD51837D5FF0090FA093608BC6939BDAA7FB808` |
+| Pre-upgrade v2.0.0 SHA-256 | `9D0A21BA54B94E23F2B444CED7BA2F9ADAC1765A51DD6C62BC37E9FA9A0F7168` |
+| Verified rollback backup | `<operator-backup-root>/20260822T124036Z-pre-v2.0.1/sonar-offline-report-plugin-2.0.0.jar` |
+
+The JAR was staged under a hidden name, checksum-verified, made active with the
+old JAR moved aside, and followed by a full container restart. The API returned
+`UP`; the container remained running with restart count `0`; startup logged
+`Deploy SonarQube Offline Report Plugin / 2.0.1`; both the web server and
+compute engine became operational; the project and portfolio routes returned
+HTTP 200; and both served JavaScript hashes matched the packaged release
+frontends exactly. No error, exception, or causal stack entry appeared in the
+reviewed post-restart web or compute-engine log slices.
+
+Only after the active state passed did the operator compare the hidden old JAR
+with the host rollback backup. Both matched `9D0A...7168`. The hidden copy was
+then removed from the active volume, leaving exactly one plugin JAR; the host
+backup remains recoverable. An extra v2.0.1 rollback/reinstall was deliberately
+not forced after successful smoke testing. The same operating procedure had
+already been rehearsed end to end with the model-equivalent candidate described
+below. Full evidence and boundaries are in
+`docs/DEPLOYMENT-VALIDATION-V2.0.1-2026-08-22.md`.
+
+The live log also warned that OAuth should use HTTPS. This is independent of
+plugin startup, but confirms the documented HTTPS promotion gate is open on the
+qualified target.
+
+### Historical dirty v2.0.0 lab-candidate deployment
+
+The following record identifies the earlier rollback rehearsal. It is not a
+claim that its bytes are a release artifact or remain active.
+
+#### Target and artifact
 
 | Item | Verified value |
 |---|---|
@@ -725,7 +784,7 @@ not a claim that the current worktree or a future release has the same bytes.
 | Original v1.3.0 rollback backup | `<operator-backup-root>/20260822T093921Z` |
 | Superseded v2 candidate backup | `<operator-backup-root>/20260822T095300Z-final` |
 
-### Provenance boundary
+#### Provenance boundary
 
 The deployed JAR was built while implementation inputs were uncommitted. Its
 embedded metadata correctly says:
@@ -744,7 +803,7 @@ The embedded source digest identifies the defined build-input set. Neither is a
 clean-tag attestation. This JAR must never be represented as a published,
 clean-source, signed, or enterprise-GA release.
 
-### Upgrade, rollback, and final state
+#### Upgrade, rollback, and final state
 
 The operator:
 
@@ -781,8 +840,9 @@ Operational invariants are: use a persistent extensions volume, verify the
 exact JAR checksum, keep exactly one `offlinereport` JAR active, back up before
 replacement, perform a full restart, verify `UP`/logs/routes/assets, and never
 use `docker compose down -v` for ordinary maintenance. Detailed commands and
-platform variants are in `README.md`; exact evidence is in
-`docs/DEPLOYMENT-VALIDATION-2026-08-22.md`.
+platform variants are in `README.md`; the published-v2.0.1 evidence is in
+`docs/DEPLOYMENT-VALIDATION-V2.0.1-2026-08-22.md`, and the earlier full rollback
+rehearsal is in `docs/DEPLOYMENT-VALIDATION-2026-08-22.md`.
 
 ## 18. Historical v1.3.0 context (not current)
 
@@ -818,7 +878,8 @@ They are not the source of truth for v2.0.1 behavior.
 | `docs/SECURITY.md` | trust model, threats, controls, operational checks |
 | `docs/COMPATIBILITY.md` | supported baseline and acceptance matrix |
 | `docs/ENTERPRISE-READINESS.md` | release-state policy and mandatory GA gates |
-| `docs/DEPLOYMENT-VALIDATION-2026-08-22.md` | exact deployed-candidate facts and rollback record |
+| `docs/DEPLOYMENT-VALIDATION-V2.0.1-2026-08-22.md` | exact published v2.0.1 Linux Docker installation and integrity evidence |
+| `docs/DEPLOYMENT-VALIDATION-2026-08-22.md` | historical dirty v2.0.0 rollback rehearsal |
 | `docs/releases/v2.0.1.md` | v2.0.1 candidate release notes |
 | `docs/releases/v2.0.0.md` | unpublished v2.0.0 tag record; superseded by v2.0.1 |
 | `CHANGELOG.md` | versioned functional/security history |

@@ -13,11 +13,12 @@ same-origin SonarQube Web APIs, then generates files locally. It has no server
 report endpoint, service credential, database access, report repository, direct
 PDF generator, or arbitrary DOCX-template execution surface.
 
-The Model v3 implementation is **development GO only**. Controlled pilot is
-NO-GO until the global page, Browse-filtered inventory, mixed permissions,
-bounded 1/10/25/50-project load and cancellation are proven on the exact target
-server and supported browsers. It does not inherit historical single-project
-deployment evidence automatically.
+The Model v3 implementation and exact published-JAR deployment are
+**development GO only**. Controlled pilot is NO-GO until the global page,
+Browse-filtered inventory, mixed permissions, bounded 1/10/25/50-project load
+and cancellation are proven with ordinary authenticated users on the exact
+target server and supported browsers. Route and static-byte smoke evidence does
+not establish those data and authorization properties.
 
 ## Release states
 
@@ -43,9 +44,9 @@ links, exceptions, and rollback result for each promoted artifact.
 | Word and OpenXML | DOCX opens without repair in Word and LibreOffice; Open XML validation; fixed-part and relationship scan; malicious corpus and accessibility review | **Open — GA blocker** |
 | Large exports and API mutation | 0/1/501/9,999/10,000/10,001 cases, duplicate/changing pages, partial-data policy, browser memory/time budgets, abort and recovery | **Open — GA blocker** |
 | Accessibility | Automated checks plus keyboard, screen-reader, forced-colors, 320 CSS px/400% reflow and print review | **Open — GA blocker** |
-| Upgrade and rollback | Atomic install/upgrade, exactly one plugin JAR/key, startup smoke test, removal, and restore of the immediately previous verified artifact | **Pass on the exact Linux Docker target: v2 upgrade, v1.3.0 restore, final v2 reinstall, one active JAR, restart count 0; formal production change approval remains operational** |
-| Artifact signing and provenance | Approved signing identity, signature verification instructions, SHA-256 digest, source revision, clean-build provenance, release attestation and repository protection against version-tag update/deletion | **Workflow implemented; exact-candidate attestation approval and administrator-owned `v*` tag protection remain open — GA blocker** |
-| SBOM and license approval | Machine-readable SBOM for shipped artifact, transitive inventory, vulnerability and license-policy review, LICENSE/NOTICE inclusion verified in source and JAR | **Open — GA blocker** |
+| Upgrade and rollback | Atomic install/upgrade, exactly one plugin JAR/key, startup smoke test, removal, and restore of the immediately previous verified artifact | **Exact published v2.0.1 upgrade, startup, routes/static integrity, one active JAR, restart count 0 and verified rollback backup pass. The operating procedure was rehearsed end to end with the model-equivalent candidate; exact-v2.0.1 restore/reinstall, removal and formal production change approval remain operational gates** |
+| Artifact signing and provenance | Approved signing identity, signature verification instructions, SHA-256 digest, source revision, clean-build provenance, release attestation and repository protection against version-tag update/deletion | **All eight published files have exact source/workflow attestations and the JAR has a CycloneDX predicate; organizational approval and administrator-owned `v*` tag protection remain open — GA blocker** |
+| SBOM and license approval | Machine-readable SBOM for shipped artifact, transitive inventory, vulnerability and license-policy review, LICENSE/NOTICE inclusion verified in source and JAR | **Exact CycloneDX asset, checksum, deterministic serial, provenance binding and SBOM attestation pass; vulnerability and license-policy approval remain open — GA blocker** |
 | Privacy and records management | Data classification, PII purpose, retention/deletion, approved transfer channels, DLP handling, and public-project export decision | **Open — GA blocker** |
 | Observability | Privacy-safe audit event for actor/project/scope/count/format/result and actionable error/retry/timing telemetry; no tokens or report content | **Open — GA blocker** |
 
