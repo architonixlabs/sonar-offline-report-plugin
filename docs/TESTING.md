@@ -10,7 +10,7 @@ npm run test:browser
 npm run benchmark
 ```
 
-On Windows use `mvnw.cmd`. Node.js 18+ supports the build/unit suite; the mandatory `test:browser` gate requires Node.js 20.10+ because it uses the built-in experimental WebSocket client, and CI uses Node 20. `npm test` rebuilds both page bundles before running Node tests. `npm run check` compares generated content with both committed bundles. `npm run test:browser` finds an installed Chrome/Chromium browser, writes deterministic fixtures under `target/browser-regression`, and validates the actual generated HTML through Chrome DevTools. Maven compiles Java 11 bytecode using JDK 17+, runs page-registration tests, packages both static assets and produces a CycloneDX JSON SBOM.
+On Windows use `mvnw.cmd`. Node.js 18+ supports the build/unit suite; the mandatory `test:browser` gate requires Node.js 20.10+ because it uses the built-in experimental WebSocket client, and CI uses Node 20. `npm test` rebuilds both page bundles before running Node tests. `npm run check` compares generated content with both committed bundles. `npm run test:browser` finds an installed Chrome/Chromium browser, writes deterministic fixtures under `target/browser-regression`, and validates the actual generated HTML through Chrome DevTools. Maven compiles Java 11 bytecode using JDK 17+, runs page-registration tests, packages both static assets and produces a CycloneDX JSON SBOM. The clean-tag workflow then adds the deterministic repository/tag/revision serial required for GitHub's SBOM attestation before provenance and checksums are generated.
 
 ## Automated risk coverage
 
@@ -26,9 +26,10 @@ On Windows use `mvnw.cmd`. Node.js 18+ supports the build/unit suite; the mandat
 | Security | hostile HTML/XML/formula input, CSP hashes, no network capability, macro/external-link exclusion, ZIP path/size guards |
 | UI structure | guided single/portfolio workflow, viewport/reflow/focus-size/live-status patterns, deep snapshot freeze |
 | Contract | Draft 2020-12 Model v3 schema, representative single/portfolio envelopes and cross-field invariants |
+| Release integrity | exact source/tag/version binding, deterministic CycloneDX UUID v5 identity, idempotence and foreign-serial refusal |
 | Real browser | all eight built-in profiles at 1440px and 390px, zero overflow, runtime/CSP/offline checks, 16 deterministic screenshots, project and portfolio active/all print-scope reconciliation, and three deterministic PDF artifacts |
 
-The current implementation run passes 77/77 Node tests. The local Chrome 151 regression passes 224/224 checks across all eight built-in profiles, 16 deterministic screenshots and three deterministic print PDFs; all 19 artifact hashes are independently verified. The Java registration test is 1/1; the clean Maven result is recorded with the exact packaged candidate.
+The current implementation run passes 81/81 Node tests. The local Chrome 151 regression passes 224/224 checks across all eight built-in profiles, 16 deterministic screenshots and three deterministic print PDFs; all 19 artifact hashes are independently verified. The Java registration test is 1/1; the clean Maven result is recorded with the exact packaged candidate.
 
 ## Browser integration
 

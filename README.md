@@ -2,9 +2,9 @@
 
 A thin SonarQube Community Build plugin that collects authorized data through public Web APIs and creates portable reports entirely in the browser. It preserves the project page and adds an optional global Portfolio Reporting page for up to 50 projects visible to the signed-in user. It does not access the SonarQube database, store reports on the server, or use a privileged service token.
 
-Version `2.0.0` is a **production-hardening release candidate** targeting SonarQube Community Build `26.6.0.123539`. Report Model v3, portfolio reporting, persona evidence views, artifact-level completeness, cancellation-safe collection and cross-format reconciliation are implemented and automated locally. The exact candidate has also passed a Linux Docker upgrade, route/static integrity check, rollback rehearsal and final reinstall. Promotion still requires authenticated authorization, HTTPS, target-server load, desktop Office, accessibility, clean release attestation and SBOM-policy evidence in [Enterprise readiness](docs/ENTERPRISE-READINESS.md).
+Version `2.0.1` is a **production-hardening release candidate** targeting SonarQube Community Build `26.6.0.123539`. Report Model v3, portfolio reporting, persona evidence views, artifact-level completeness, cancellation-safe collection and cross-format reconciliation are implemented and automated locally. The Model v3 candidate has also passed a Linux Docker upgrade, route/static integrity check, rollback rehearsal and final reinstall; the exact published v2.0.1 artifact must still pass the post-publication deployment checks. Promotion still requires authenticated authorization, HTTPS, target-server load, desktop Office, accessibility and policy approval of the clean release evidence in [Enterprise readiness](docs/ENTERPRISE-READINESS.md).
 
-Use only the clean-tag assets from the v2.0.0 GitHub prerelease. The earlier dirty-source Linux lab candidate is deployment evidence only and is deliberately excluded from the release assets.
+Use only the clean-tag assets from the v2.0.1 GitHub prerelease. The earlier dirty-source Linux lab candidate is deployment evidence only and is deliberately excluded from the release assets. The v2.0.0 tag did not publish a release after its workflow correctly stopped at SBOM-attestation validation; it is superseded by v2.0.1 and must not be installed.
 
 The major version is intentional: JSON advances from Report Model v2 to v3 and CSV is now a self-contained manifest envelope. Saved template schemas 1 and 2 remain import-compatible.
 
@@ -54,7 +54,7 @@ See [Reporting Model](docs/REPORTING-MODEL.md), [API contract](docs/API-CONTRACT
 
 The release is deliberately targeted to the deployed Community Build `26.6.0.123539` and Plugin API `13.7.0.4381`. Java uses only the public `Plugin`, `PageDefinition`, and `Page` contracts. It does not claim universal compatibility with other SonarQube/Plugin API major versions.
 
-The v2.0.0 candidate is verified by the automated Model v3, persona, cross-format, browser-renderer and packaging suites. The exact project/global routes and static bundles have passed target-server smoke and byte-integrity checks; authenticated current-user inventory, trend collection, portfolio limits and negative permissions still require target-server qualification. Desktop Word/Excel/LibreOffice checks also remain open. See [Compatibility and acceptance](docs/COMPATIBILITY.md) and the [deployment validation record](docs/DEPLOYMENT-VALIDATION-2026-08-22.md).
+The v2.0.1 candidate is verified by the automated Model v3, persona, cross-format, browser-renderer and packaging suites. The Model v3 project/global routes and static bundles have passed target-server smoke and byte-integrity checks; authenticated current-user inventory, trend collection, portfolio limits and negative permissions still require exact-v2.0.1 target-server qualification. Desktop Word/Excel/LibreOffice checks also remain open. See [Compatibility and acceptance](docs/COMPATIBILITY.md) and the [deployment validation record](docs/DEPLOYMENT-VALIDATION-2026-08-22.md).
 
 ## Build
 
@@ -75,7 +75,7 @@ On Windows, use `mvnw.cmd clean verify` for the Maven step.
 The release artifact is:
 
 ```text
-target/sonar-offline-report-plugin-2.0.0.jar
+target/sonar-offline-report-plugin-2.0.1.jar
 ```
 
 The build derives the browser-visible plugin version from `pom.xml`, verifies the matching package version, fails when the committed static bundle is stale, and emits a CycloneDX JSON SBOM beside the JAR. The wrapper pins the Maven distribution and verifies its SHA-256 before execution.
@@ -84,8 +84,8 @@ The build derives the browser-visible plugin version from `pom.xml`, verifies th
 
 This is a third-party plugin and is not installed from the SonarQube Marketplace. A SonarQube administrator must acknowledge the third-party-plugin risk when prompted. The same installation rules apply to a new install, an upgrade, and a reinstall:
 
-1. Confirm the SonarQube version is supported. Version `2.0.0` targets Community Build `26.6.0.123539` and Plugin API `13.7.0.4381`; do not assume compatibility with another Plugin API major version.
-2. Download the JAR, its `.sha256` file, provenance manifest and CycloneDX SBOM assets from the [v2.0.0 release](https://github.com/architonixlabs/sonar-offline-report-plugin/releases/tag/v2.0.0).
+1. Confirm the SonarQube version is supported. Version `2.0.1` targets Community Build `26.6.0.123539` and Plugin API `13.7.0.4381`; do not assume compatibility with another Plugin API major version.
+2. Download the JAR, its `.sha256` file, provenance manifest and CycloneDX SBOM assets from the [v2.0.1 release](https://github.com/architonixlabs/sonar-offline-report-plugin/releases/tag/v2.0.1).
 3. Verify the checksum before copying the JAR to a server.
 4. Back up and remove every older `sonar-offline-report-plugin-*.jar`. Only one JAR with the `offlinereport` plugin key may be present.
 5. Put the JAR in `<sonarqubeHome>/extensions/plugins`, or in the persistent Docker volume mounted at `/opt/sonarqube/extensions`.
@@ -99,7 +99,7 @@ For a current ZIP installation, first confirm the supported Java version in the 
 Linux:
 
 ```bash
-PLUGIN_VERSION=2.0.0
+PLUGIN_VERSION=2.0.1
 RELEASE_URL="https://github.com/architonixlabs/sonar-offline-report-plugin/releases/download/v${PLUGIN_VERSION}"
 
 curl -fLO "${RELEASE_URL}/sonar-offline-report-plugin-${PLUGIN_VERSION}.jar"
@@ -113,13 +113,13 @@ sha256sum -c "sonar-offline-report-plugin-${PLUGIN_VERSION}.cdx.json.sha256"
 macOS uses `shasum` instead of `sha256sum`:
 
 ```bash
-shasum -a 256 -c sonar-offline-report-plugin-2.0.0.jar.sha256
+shasum -a 256 -c sonar-offline-report-plugin-2.0.1.jar.sha256
 ```
 
 Windows PowerShell:
 
 ```powershell
-$Version = "2.0.0"
+$Version = "2.0.1"
 $ReleaseUrl = "https://github.com/architonixlabs/sonar-offline-report-plugin/releases/download/v$Version"
 $Jar = "sonar-offline-report-plugin-$Version.jar"
 $Checksum = "$Jar.sha256"
@@ -153,7 +153,7 @@ Adjust those values for the server before running the commands.
 
 ```bash
 export SONARQUBE_HOME=/opt/sonarqube
-export PLUGIN_JAR="$PWD/sonar-offline-report-plugin-2.0.0.jar"
+export PLUGIN_JAR="$PWD/sonar-offline-report-plugin-2.0.1.jar"
 export PLUGIN_DIR="$SONARQUBE_HOME/extensions/plugins"
 export PLUGIN_BACKUP="/var/backups/sonarqube-plugins/$(date -u +%Y%m%d-%H%M%S)"
 
@@ -174,7 +174,7 @@ sudo find "$PLUGIN_DIR" -maxdepth 1 -type f \
 sudo find "$PLUGIN_DIR" -maxdepth 1 -type f \
   -name 'sonar-offline-report-plugin-*.jar' -delete
 sudo install -o sonarqube -g sonarqube -m 0644 \
-  "$PLUGIN_JAR" "$PLUGIN_DIR/sonar-offline-report-plugin-2.0.0.jar"
+  "$PLUGIN_JAR" "$PLUGIN_DIR/sonar-offline-report-plugin-2.0.1.jar"
 
 sudo systemctl start sonarqube.service
 sudo systemctl status sonarqube.service --no-pager
@@ -200,7 +200,7 @@ Assuming the container is named `sonarqube`:
 
 ```bash
 CONTAINER=sonarqube
-PLUGIN_JAR="$PWD/sonar-offline-report-plugin-2.0.0.jar"
+PLUGIN_JAR="$PWD/sonar-offline-report-plugin-2.0.1.jar"
 BACKUP_DIR="$PWD/sonarqube-plugin-backup-$(date -u +%Y%m%d-%H%M%S)"
 
 # Confirm the container and persistent extensions mount.
@@ -219,7 +219,7 @@ done
 docker exec "$CONTAINER" sh -c \
   'rm -f "$SONARQUBE_HOME"/extensions/plugins/sonar-offline-report-plugin-*.jar'
 docker cp "$PLUGIN_JAR" \
-  "$CONTAINER:/opt/sonarqube/extensions/plugins/sonar-offline-report-plugin-2.0.0.jar"
+  "$CONTAINER:/opt/sonarqube/extensions/plugins/sonar-offline-report-plugin-2.0.1.jar"
 
 docker restart "$CONTAINER"
 docker logs --tail 200 "$CONTAINER"
@@ -270,8 +270,8 @@ done
 
 docker compose exec -T sonarqube sh -c \
   'rm -f "$SONARQUBE_HOME"/extensions/plugins/sonar-offline-report-plugin-*.jar'
-docker compose cp sonar-offline-report-plugin-2.0.0.jar \
-  sonarqube:/opt/sonarqube/extensions/plugins/sonar-offline-report-plugin-2.0.0.jar
+docker compose cp sonar-offline-report-plugin-2.0.1.jar \
+  sonarqube:/opt/sonarqube/extensions/plugins/sonar-offline-report-plugin-2.0.1.jar
 
 docker compose restart sonarqube
 docker compose logs --tail 200 sonarqube
@@ -286,7 +286,7 @@ The supported Windows distribution is x64. Run the following in an elevated Powe
 ```powershell
 $SonarHome = "C:\sonarqube"
 $PluginDir = Join-Path $SonarHome "extensions\plugins"
-$Jar = (Resolve-Path ".\sonar-offline-report-plugin-2.0.0.jar").Path
+$Jar = (Resolve-Path ".\sonar-offline-report-plugin-2.0.1.jar").Path
 $BackupDir = Join-Path "C:\sonarqube-backups\plugins" (Get-Date -Format "yyyyMMdd-HHmmss")
 $ServiceScript = Join-Path $SonarHome "bin\windows-x86-64\SonarService.bat"
 
@@ -301,7 +301,7 @@ $Existing | Select-Object FullName, Length, LastWriteTime
 New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
 $Existing | Copy-Item -Destination $BackupDir
 $Existing | Remove-Item -Force
-Copy-Item -LiteralPath $Jar -Destination (Join-Path $PluginDir "sonar-offline-report-plugin-2.0.0.jar")
+Copy-Item -LiteralPath $Jar -Destination (Join-Path $PluginDir "sonar-offline-report-plugin-2.0.1.jar")
 
 & $ServiceScript start
 & $ServiceScript status
@@ -332,7 +332,7 @@ find "$PLUGIN_DIR" -maxdepth 1 -type f \
   -exec cp -p '{}' "$BACKUP_DIR/" \;
 find "$PLUGIN_DIR" -maxdepth 1 -type f \
   -name 'sonar-offline-report-plugin-*.jar' -delete
-install -m 0644 sonar-offline-report-plugin-2.0.0.jar "$PLUGIN_DIR/"
+install -m 0644 sonar-offline-report-plugin-2.0.1.jar "$PLUGIN_DIR/"
 "$SONARQUBE_HOME/bin/macosx-universal-64/sonar.sh" start
 tail -n 200 "$SONARQUBE_HOME/logs/sonar.log"
 ```
@@ -358,7 +358,7 @@ curl -fsS "$SONAR_URL/api/server/version"
 Then verify all of the following:
 
 1. Log in as a SonarQube administrator and acknowledge the third-party-plugin warning if prompted.
-2. Open **Administration → Marketplace** and confirm `Offline Report` version `2.0.0` appears in the installed plugins.
+2. Open **Administration → Marketplace** and confirm `Offline Report` version `2.0.1` appears in the installed plugins.
 3. Open a project and select **Extensions → Offline Report**.
 4. Create a small HTML report and confirm the download opens with networking disabled.
 5. Review `logs/sonar.log`, `logs/web.log`, and the container/service logs for plugin-loading or linkage errors.
@@ -410,4 +410,4 @@ Official references:
 
 ## Release policy
 
-Git tags use `vMAJOR.MINOR.PATCH`. A tag push runs one non-cancelling job per tag, refuses an existing release, requires a clean exact tag/commit reachable from the default branch, removes checkout credentials before build code runs, and revalidates the remote tag immediately before attestation and publication. It stamps verified source and bundle digests, builds the Maven package, verifies the packaged frontends, reruns the real-browser persona suite and bounded maximum benchmark, and publishes the JAR, CycloneDX JSON SBOM, provenance manifest, and checksummed validation-evidence archive with GitHub attestations. A repository administrator must separately protect `refs/tags/v*` from update and deletion; the workflow detects movement during publication but cannot establish repository governance. Candidate builds are marked as GitHub prereleases until the manual gates in [Enterprise readiness](docs/ENTERPRISE-READINESS.md) are closed.
+Git tags use `vMAJOR.MINOR.PATCH`. A tag push runs one non-cancelling job per tag, refuses an existing release, requires a clean exact tag/commit reachable from the default branch, removes checkout credentials before build code runs, and revalidates the remote tag immediately before attestation and publication. It stamps verified source and bundle digests, builds the Maven package, finalizes a deterministic CycloneDX UUID v5 identity bound to repository/tag/commit, verifies the packaged frontends, reruns the real-browser persona suite and bounded maximum benchmark, and publishes the JAR, CycloneDX JSON SBOM, provenance manifest, and checksummed validation-evidence archive with GitHub artifact and SBOM attestations. A repository administrator must separately protect `refs/tags/v*` from update and deletion; the workflow detects movement during publication but cannot establish repository governance. Candidate builds are marked as GitHub prereleases until the manual gates in [Enterprise readiness](docs/ENTERPRISE-READINESS.md) are closed.

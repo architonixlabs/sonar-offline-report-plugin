@@ -1,6 +1,6 @@
 # Third-party notices
 
-This file records direct dependencies and explicitly pinned build tooling declared by the project as of the 2.0.0
+This file records direct dependencies and explicitly pinned build tooling declared by the project as of the 2.0.1
 production-hardening release-candidate work. It is not a substitute for the machine-generated,
 transitive SBOM and license review required for an enterprise release.
 

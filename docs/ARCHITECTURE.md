@@ -95,4 +95,4 @@ Capabilities requiring persistence, organization-level policy/workflow, schedule
 
 ## Release posture
 
-Version 2.0.0 is the production-hardening release candidate for Model v3. Its automated source, cross-format, persona and packaging gates must pass before deployment; controlled pilot and enterprise GA remain blocked by the exact-artifact live evidence gates in [Compatibility](COMPATIBILITY.md), [Performance](PERFORMANCE.md), [Persona validation](PERSONA-VALIDATION.md), and [Enterprise readiness](ENTERPRISE-READINESS.md).
+Version 2.0.1 is the first publishable production-hardening release candidate for Model v3. Its automated source, cross-format, persona, packaging, provenance and SBOM-attestation gates must pass before deployment; controlled pilot and enterprise GA remain blocked by the exact-artifact live evidence gates in [Compatibility](COMPATIBILITY.md), [Performance](PERFORMANCE.md), [Persona validation](PERSONA-VALIDATION.md), and [Enterprise readiness](ENTERPRISE-READINESS.md).

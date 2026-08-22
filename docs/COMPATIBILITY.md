@@ -4,19 +4,19 @@
 
 | Concern | Baseline |
 |---|---|
-| Release classification | `2.0.0` production-hardening release candidate |
+| Release classification | `2.0.1` production-hardening release candidate |
 | Target SonarQube Community Build | `26.6.0.123539` |
 | Plugin API compile/minimum | `13.7.0.4381` |
 | Java bytecode | 11 |
 | Java API surface | `Plugin`, `PageDefinition`, `Page` |
 | Browser integration | `registerExtension`, context-path-aware credentialed `fetch`; `SonarRequest.getJSON` fallback |
-| Tested deployment | Linux Docker deployment on the exact target; upgrade, page/static smoke and rollback rehearsal pass |
+| Tested deployment | Model-equivalent dirty v2.0.0 lab candidate on the exact Linux Docker target; upgrade, page/static smoke and rollback rehearsal pass; exact published v2.0.1 deployment pending |
 
-This artifact targets the exact deployed 26.6 instance. It is not advertised as compatible across untested SonarQube or Plugin API major versions.
+This artifact targets the same 26.6 instance used for the Model v3 lab qualification. It is not advertised as compatible across untested SonarQube or Plugin API major versions; exact published-v2.0.1 deployment evidence is recorded separately after publication.
 
 ## Model v3 compatibility posture
 
-Version 2.0.0 preserves the qualified project page and adds a public `Page.Scope.GLOBAL` page. Automated registration verifies both pages and confirms the portfolio page is not admin-only. The browser bundle adds `/api/components/search` for Browse-filtered inventory and `/api/measures/search_history` for optional trends; both actions and global-page rendering still require exact-candidate qualification against `26.6.0.123539` before controlled pilot.
+Version 2.0.1 preserves the qualified project page and adds a public `Page.Scope.GLOBAL` page. Automated registration verifies both pages and confirms the portfolio page is not admin-only. The browser bundle adds `/api/components/search` for Browse-filtered inventory and `/api/measures/search_history` for optional trends; both actions and global-page rendering still require exact-candidate qualification against `26.6.0.123539` before controlled pilot.
 
 Portfolio mode intentionally supports main branches only. Single-project branch/pull-request behavior is unchanged. Template Schema v2 remains accepted; Model v3 adds fields and does not promise that an older renderer can understand a v3 JSON snapshot.
 
@@ -78,7 +78,7 @@ Until these close, publish this build as a controlled candidate/pilot, not enter
 
 ## Automated source evidence
 
-- Browser/export tests: 77/77 source tests pass in the Model v3 implementation run, including timeout, transport cancellation, bounded retry/concurrency, project inventory, mixed outcomes, pagination-window, branch scope, weighted formulas, null/zero trends, exact HTML dataset-state disclosure, schema/persona/provenance contracts, Unicode, ZIP budgets, hostile content and cross-format reconciliation.
+- Browser/export tests: 81/81 source tests pass in the v2.0.1 implementation run, including timeout, transport cancellation, bounded retry/concurrency, project inventory, mixed outcomes, pagination-window, branch scope, weighted formulas, null/zero trends, exact HTML dataset-state disclosure, schema/persona/provenance/SBOM contracts, Unicode, ZIP budgets, hostile content and cross-format reconciliation.
 - Local Chrome 151 regression: 224/224 checks across all eight built-in profiles at desktop/390px, CSP/offline enforcement, 16 deterministic screenshots, three deterministic print PDFs, and complete project/portfolio print-scope reconciliation with all 19 artifact hashes independently verified. This is renderer evidence, not target-server authorization or native-dialog evidence.
 - Java page-registration test verifies both project and global page definitions.
 - The Maven Wrapper verifies Maven 3.9.16; Maven Enforcer requires Maven 3.9+

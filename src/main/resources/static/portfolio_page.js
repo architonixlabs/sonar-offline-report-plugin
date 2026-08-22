@@ -1,5 +1,5 @@
-/* SonarQube Offline Report Plugin 2.0.0 - generated; edit src/main/js and run npm run build. */
-window.OfflineReportBuild = Object.freeze({"pluginVersion":"2.0.0","sourceRevision":null,"sourceRevisionBase":null,"sourceState":"unstamped","sourceDirty":null,"sourceRevisionVerified":false,"sourceDigest":"sha256:93ff5b892eb12393ff07d54c61659235e5ae73f98507df3567bc257cbb9fea35","sourceDigestScope":"plugin-build-inputs-v1","pluginArtifactDigest":null,"pluginArtifactDigestState":"not_computed","bundleName":"portfolio_page.js","bundleSourceDigest":"sha256:2a32775c5bcafb073bf4bf42b707303364abb7831addb5e12b7aa9532649175a","bundleSourceDigestScope":"ordered-browser-source-inputs-v1"});
+/* SonarQube Offline Report Plugin 2.0.1 - generated; edit src/main/js and run npm run build. */
+window.OfflineReportBuild = Object.freeze({"pluginVersion":"2.0.1","sourceRevision":null,"sourceRevisionBase":null,"sourceState":"unstamped","sourceDirty":null,"sourceRevisionVerified":false,"sourceDigest":"sha256:6ded838ff95aea36012b4e6de260d70c6418305de536ef000870618d88f7472a","sourceDigestScope":"plugin-build-inputs-v1","pluginArtifactDigest":null,"pluginArtifactDigestState":"not_computed","bundleName":"portfolio_page.js","bundleSourceDigest":"sha256:2a32775c5bcafb073bf4bf42b707303364abb7831addb5e12b7aa9532649175a","bundleSourceDigestScope":"ordered-browser-source-inputs-v1"});
 (function (global) {
   "use strict";
 

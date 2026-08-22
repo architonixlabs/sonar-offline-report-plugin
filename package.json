@@ -1,6 +1,6 @@
 {
   "name": "sonar-offline-report-plugin-ui",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "Dependency-free browser UI and exporters for the SonarQube Offline Report plugin",
   "scripts": {

@@ -12,6 +12,7 @@ import {
   collectBuildInputPaths,
   digestNamedFiles
 } from "./build.mjs";
+import { releaseSbomSerial } from "./finalize-sbom.mjs";
 
 const execFileAsync = promisify(execFile);
 const scriptPath = fileURLToPath(import.meta.url);
@@ -35,9 +36,12 @@ export function parseBuildMetadata(contents, label = "browser bundle") {
   return metadata;
 }
 
-function validateSbom(sbom, version) {
+function validateSbom(sbom, version, expectedSerial = null) {
   invariant(sbom.bomFormat === "CycloneDX", "Release SBOM must use CycloneDX.");
   invariant(/^1\.[4-9]$/.test(String(sbom.specVersion)), `Unsupported CycloneDX spec version ${sbom.specVersion}.`);
+  if (expectedSerial) {
+    invariant(sbom.serialNumber === expectedSerial, "Release SBOM serial number does not match the deterministic repository/tag/revision identity.");
+  }
   invariant(sbom.metadata?.component?.version === version, "SBOM root component version does not match the plugin version.");
   invariant(sbom.metadata?.component?.name === "sonar-offline-report-plugin", "SBOM root component identity is incorrect.");
 }
@@ -73,7 +77,7 @@ function validateReleaseRevision(metadata, expectedRevision, label) {
   invariant(metadata.sourceRevisionVerified === true, `${label} source revision was not verified by the build.`);
 }
 
-export async function verifyPackagedRelease({ root = defaultRoot, expectedRevision = null, requireValidation = false } = {}) {
+export async function verifyPackagedRelease({ root = defaultRoot, expectedRevision = null, requireValidation = false, expectedSbomSerial = null } = {}) {
   const packageJson = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
   const version = packageJson.version;
   invariant(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version), `Invalid package version ${version}.`);
@@ -86,7 +90,7 @@ export async function verifyPackagedRelease({ root = defaultRoot, expectedRevisi
   const sbomDetails = await requireFile(files.sbom, "Release SBOM");
   const sbomBytes = await readFile(files.sbom);
   const sbom = JSON.parse(sbomBytes.toString("utf8"));
-  validateSbom(sbom, version);
+  validateSbom(sbom, version, expectedSbomSerial);
   const validationDetails = await stat(files.validation).catch(() => null);
   if (requireValidation) {
     invariant(validationDetails?.isFile() && validationDetails.size > 0, `Release validation evidence is missing or empty: ${files.validation}`);
@@ -184,7 +188,12 @@ export function releaseManifest(verified, environment) {
 export async function main({ root = defaultRoot, argv = process.argv.slice(2), environment = process.env } = {}) {
   const write = argv.includes("--write");
   const expectedRevision = write ? environment.GITHUB_SHA : environment.RELEASE_SOURCE_REVISION || null;
-  const verified = await verifyPackagedRelease({ root, expectedRevision, requireValidation: write });
+  const expectedSbomSerial = write ? releaseSbomSerial({
+    repository: environment.GITHUB_REPOSITORY,
+    revision: environment.GITHUB_SHA,
+    tag: environment.GITHUB_REF_NAME
+  }) : null;
+  const verified = await verifyPackagedRelease({ root, expectedRevision, requireValidation: write, expectedSbomSerial });
   if (write) {
     const manifest = releaseManifest(verified, environment);
     await writeFile(verified.files.provenance, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");

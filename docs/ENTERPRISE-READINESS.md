@@ -2,7 +2,7 @@
 
 ## Decision
 
-Version 2.0.0 is a **production-hardening release candidate for controlled pilot use only**. It
+Version 2.0.1 is a **production-hardening release candidate for controlled pilot use only**. It
 must not be represented as enterprise general availability, compliance
 certified, or suitable for unattended regulated reporting until every GA
 blocker below is closed and approved by the accountable security, privacy,
@@ -33,7 +33,7 @@ links, exceptions, and rollback result for each promoted artifact.
 
 ## Mandatory GA gates
 
-| Gate | Required evidence | 2.0.0 status |
+| Gate | Required evidence | 2.0.1 status |
 |---|---|---|
 | HTTPS and authentication | Supported TLS reverse-proxy configuration; HSTS and secure-cookie review; no production plain HTTP | **Open — GA blocker** |
 | Permission and isolation matrix | Real target-server tests for Browse/no-Browse, private projects, cross-project key tampering, anonymous/public policy, and expired/revoked sessions; no existence or data leak | **Open — GA blocker** |

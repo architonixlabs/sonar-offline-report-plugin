@@ -1,14 +1,15 @@
-# Project context: SonarQube Offline Report Plugin v2.0.0
+# Project context: SonarQube Offline Report Plugin v2.0.1
 
-Last consolidated: 2026-08-22. This document describes the v2.0.0 source tree,
-the Model v3 reporting contract, and the exact Linux Docker qualification
-evidence recorded on that date. It is a technical handoff, not a certification
-or an enterprise-general-availability declaration.
+Last consolidated: 2026-08-22. This document describes the v2.0.1 source tree,
+the Model v3 reporting contract, and the historical Linux Docker qualification
+evidence recorded for its model-equivalent dirty v2.0.0 lab candidate. Exact
+published-v2.0.1 deployment evidence is recorded after publication. This is a
+technical handoff, not a certification or enterprise-GA declaration.
 
 ## 1. Status and decision
 
 The plugin is a third-party SonarQube Community Build extension that generates
-portable reports in the signed-in user's browser. Version 2.0.0 is a
+portable reports in the signed-in user's browser. Version 2.0.1 is a
 **production-hardening release candidate**:
 
 - development and deterministic local validation: **GO**;
@@ -27,11 +28,11 @@ enterprise operational readiness.
 
 ### Current identity
 
-| Item | Current v2.0.0 value |
+| Item | Current v2.0.1 value |
 |---|---|
 | Repository | `https://github.com/architonixlabs/sonar-offline-report-plugin` |
-| Maven coordinates | `com.architonix.sonarqube:sonar-offline-report-plugin:2.0.0` |
-| npm package | `sonar-offline-report-plugin-ui` `2.0.0`, private |
+| Maven coordinates | `com.architonix.sonarqube:sonar-offline-report-plugin:2.0.1` |
+| npm package | `sonar-offline-report-plugin-ui` `2.0.1`, private |
 | License | Apache License 2.0 |
 | Plugin key/class | `offlinereport` / `com.architonix.sonarqube.offlinereport.OfflineReportPlugin` |
 | Project page | `offlinereport/report_page`, component scope, project qualifier |
@@ -46,12 +47,15 @@ enterprise operational readiness.
 | Formats | offline HTML, XLSX, CSV, DOCX, JSON, browser Print / Save as PDF |
 | Release posture | controlled-candidate development; not enterprise GA |
 
-Use only the v2.0.0 clean-tag GitHub prerelease assets for installation. The
+Use only the v2.0.1 clean-tag GitHub prerelease assets for installation. The
 dated dirty-source deployment candidate is deliberately excluded from that
-release and remains historical lab evidence only.
+release and remains historical lab evidence only. The retained, currently
+unmoved v2.0.0 tag has no GitHub release/assets and is superseded after its
+workflow stopped at the SBOM-specific attestation gate. Administrator-owned
+tag update/deletion protection remains an open governance control.
 
 `pom.xml`, `package.json`, `package-lock.json`, and the POM SCM tag all declare
-2.0.0. The working tree used for the dated deployed candidate was based on the
+2.0.1. The working tree used for the dated deployed candidate was based on the
 v1.3.0 commit but contained the v2.0.0 implementation. That makes v1.3.0 a
 historical base/rollback version, not the current product version; see section
 18.
@@ -498,7 +502,7 @@ counts rather than treating a partial artifact as audit evidence.
   It identifies input bytes, not the JAR or downloaded report.
 - `pluginArtifactDigest` is a runtime hook and is currently null unless an
   external process supplies a valid digest.
-- `artifactDigest` is deliberately null/`not_computed` in v2.0.0. No report may
+- `artifactDigest` is deliberately null/`not_computed` in v2.0.1. No report may
   imply that it is signed or tamper-evident.
 - Release JAR/SBOM/checksum/attestation identity is external release provenance
   and must not be confused with the report-level artifact envelope.
@@ -555,6 +559,10 @@ independently verifies all 19 artifact hashes. Project printing reconciles 127
 actionable rows from 137 collected; portfolio active/all printing reconciles
 56/86 and 86/86 rows, including actionable/accepted/closed/unknown lifecycle
 counts. A clean tag archives this evidence with the benchmark results.
+
+The current v2.0.1 Node gate passes 81/81 tests, including four deterministic
+CycloneDX identity/fail-closed finalization checks added after the unpublished
+v2.0.0 release attempt.
 
 The dated deployed-candidate qualification recorded:
 
@@ -628,7 +636,8 @@ For `vMAJOR.MINOR.PATCH`, the workflow:
 3. builds/tests, proves generated assets were committed, and requires a clean
    working tree after removing the privileged checkout credential;
 4. rebuilds with clean exact source revision and source-input digests;
-5. packages the JAR and CycloneDX SBOM;
+5. packages the JAR and CycloneDX SBOM, then finalizes an RFC 4122 UUID v5
+   serial deterministically from repository, tag, and full source revision;
 6. reruns the real-browser persona suite and bounded export benchmark against
    the clean release inputs;
 7. packages screenshots, print PDFs, browser evidence JSON, and run-specific
@@ -639,7 +648,7 @@ For `vMAJOR.MINOR.PATCH`, the workflow:
 9. writes exact SHA-256 checksum files;
 10. re-resolves the still-matching remote tag, creates GitHub build attestations for
    every release subject, and separately
-   binds the CycloneDX SBOM to the JAR;
+   binds the finalized CycloneDX SBOM to the JAR;
 11. re-resolves the remote tag again and publishes the candidate as a GitHub
    prerelease.
 
@@ -792,7 +801,7 @@ declared package version, active plugin, report schema, or current feature set
 as v1.3.0.
 
 Historical release notes remain in `docs/releases/v1.3.0.md` and the changelog.
-They are not the source of truth for v2.0.0 behavior.
+They are not the source of truth for v2.0.1 behavior.
 
 ## 19. Documentation map and maintenance rules
 
@@ -810,7 +819,8 @@ They are not the source of truth for v2.0.0 behavior.
 | `docs/COMPATIBILITY.md` | supported baseline and acceptance matrix |
 | `docs/ENTERPRISE-READINESS.md` | release-state policy and mandatory GA gates |
 | `docs/DEPLOYMENT-VALIDATION-2026-08-22.md` | exact deployed-candidate facts and rollback record |
-| `docs/releases/v2.0.0.md` | v2.0.0 candidate release notes |
+| `docs/releases/v2.0.1.md` | v2.0.1 candidate release notes |
+| `docs/releases/v2.0.0.md` | unpublished v2.0.0 tag record; superseded by v2.0.1 |
 | `CHANGELOG.md` | versioned functional/security history |
 
 When changing the project, update this context only for a contract or evidence

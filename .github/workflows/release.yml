@@ -109,6 +109,9 @@ jobs:
       - name: Build and test plugin
         run: sh ./mvnw --batch-mode --no-transfer-progress clean verify
 
+      - name: Finalize deterministic CycloneDX release identity
+        run: node scripts/finalize-sbom.mjs
+
       - name: Run real-browser persona regression on release inputs
         run: npm run test:browser
 

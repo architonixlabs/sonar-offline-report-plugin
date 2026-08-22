@@ -96,8 +96,8 @@ test("an environment revision without Git verification is retained only as an un
 });
 
 test("build metadata parser rejects an absent envelope and parses a valid one", () => {
-  const valid = `/* banner */\nwindow.OfflineReportBuild = Object.freeze(${JSON.stringify({ pluginVersion: "2.0.0", sourceDigest: `sha256:${"a".repeat(64)}` })});\n`;
-  assert.equal(parseBuildMetadata(valid).pluginVersion, "2.0.0");
+  const valid = `/* banner */\nwindow.OfflineReportBuild = Object.freeze(${JSON.stringify({ pluginVersion: "2.0.1", sourceDigest: `sha256:${"a".repeat(64)}` })});\n`;
+  assert.equal(parseBuildMetadata(valid).pluginVersion, "2.0.1");
   assert.throws(() => parseBuildMetadata("window.OfflineReportBuild = {};"), /does not contain parseable/);
 });
 
@@ -111,7 +111,7 @@ test("generated browser metadata identifies the exact build and ordered bundle i
       bundle.inputs.map((name) => `src/main/js/${name}`),
       BUNDLE_INPUT_DIGEST_SCOPE
     );
-    assert.equal(metadata.pluginVersion, "2.0.0");
+    assert.equal(metadata.pluginVersion, "2.0.1");
     assert.equal(metadata.sourceDigest, sourceDigest);
     assert.equal(metadata.sourceDigestScope, BUILD_INPUT_DIGEST_SCOPE);
     assert.equal(metadata.bundleSourceDigest, bundleDigest);
@@ -127,7 +127,7 @@ test("generated browser metadata identifies the exact build and ordered bundle i
 
 test("release manifest binds subjects and packaged frontends to the exact tag and commit", () => {
   const verified = {
-    version: "2.0.0",
+    version: "2.0.1",
     sourceDigest: `sha256:${"b".repeat(64)}`,
     sourceDigestScope: BUILD_INPUT_DIGEST_SCOPE,
     subjects: [{ name: "plugin.jar", digest: { sha256: "c".repeat(64) } }],
@@ -135,7 +135,7 @@ test("release manifest binds subjects and packaged frontends to the exact tag an
   };
   const manifest = releaseManifest(verified, {
     GITHUB_SHA: REVISION,
-    GITHUB_REF: "refs/tags/v2.0.0",
+    GITHUB_REF: "refs/tags/v2.0.1",
     GITHUB_REPOSITORY: "architonixlabs/sonar-offline-report-plugin",
     GITHUB_SERVER_URL: "https://github.com/",
     GITHUB_RUN_ID: "123"
@@ -152,5 +152,5 @@ test("release manifest binds subjects and packaged frontends to the exact tag an
     GITHUB_REPOSITORY: "architonixlabs/sonar-offline-report-plugin",
     GITHUB_SERVER_URL: "https://github.com",
     GITHUB_RUN_ID: "123"
-  }), /does not match v2\.0\.0/);
+  }), /does not match v2\.0\.1/);
 });

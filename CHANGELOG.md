@@ -5,7 +5,17 @@ and intends to use [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## 2.0.0 - 2026-08-22 (enterprise candidate)
+## 2.0.1 - 2026-08-22 (enterprise candidate)
+
+### Fixed
+
+- Finalized the Maven-generated CycloneDX document with a deterministic RFC 4122 UUID v5 serial bound to the repository, release tag and source commit before provenance, checksums and attestation are created.
+- Added release-time validation for the CycloneDX serial required by GitHub's SBOM attestation contract.
+- Preserved the public, unpublished v2.0.0 tag after its release workflow stopped before publication; v2.0.1 is the first publishable Model v3 candidate and contains no report-model compatibility change from v2.0.0.
+
+## 2.0.0 - 2026-08-22 (unpublished tagged enterprise candidate)
+
+No GitHub release or assets were published for this tag. Its workflow passed build, browser, benchmark, provenance, checksum and general-attestation gates, then stopped safely when SBOM-specific attestation required a CycloneDX serial number. It is superseded by v2.0.1.
 
 ### Added
 
