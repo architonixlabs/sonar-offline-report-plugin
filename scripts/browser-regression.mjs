@@ -16,6 +16,8 @@ const HTML_ROOT = join(ARTIFACT_ROOT, "html");
 const SCREENSHOT_ROOT = join(ARTIFACT_ROOT, "screenshots");
 const PRINT_ROOT = join(ARTIFACT_ROOT, "print");
 const FIXED_GENERATED_AT = "2026-08-22T12:00:00.000Z";
+const PDF_STREAM_CHUNK_BYTES = 256 * 1024;
+const MAX_PDF_BYTES = 64 * 1024 * 1024;
 const DESKTOP = Object.freeze({ name: "desktop", width: 1440, height: 1000, mobile: false });
 const MOBILE = Object.freeze({ name: "mobile-390", width: 390, height: 844, mobile: true });
 
@@ -625,6 +627,32 @@ function pdfPageCount(pdf) {
   return (pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) || []).length;
 }
 
+async function printToPdf(client, options) {
+  const response = await client.send("Page.printToPDF", { ...options, transferMode: "ReturnAsStream" });
+  if (!response.stream) {
+    if (typeof response.data === "string") return Buffer.from(response.data, "base64");
+    throw new Error("Chrome returned neither a PDF stream nor inline PDF data.");
+  }
+
+  const chunks = [];
+  let bytes = 0;
+  try {
+    for (;;) {
+      const page = await client.send("IO.read", { handle: response.stream, size: PDF_STREAM_CHUNK_BYTES });
+      const chunk = Buffer.from(page.data || "", page.base64Encoded ? "base64" : "utf8");
+      bytes += chunk.length;
+      if (bytes > MAX_PDF_BYTES) {
+        throw new Error(`Chrome PDF stream exceeded the ${MAX_PDF_BYTES}-byte browser-regression limit.`);
+      }
+      chunks.push(chunk);
+      if (page.eof) break;
+    }
+  } finally {
+    await client.send("IO.close", { handle: response.stream }).catch(() => {});
+  }
+  return Buffer.concat(chunks, bytes);
+}
+
 async function exercisePrint(client, issuesFixture, expectedActionable, evidence) {
   await setViewport(client, DESKTOP);
   await client.send("Page.navigate", { url: pathToFileURL(issuesFixture.file).href });
@@ -659,11 +687,11 @@ async function exercisePrint(client, issuesFixture, expectedActionable, evidence
     marginLeft: 0.35,
     marginRight: 0.35
   };
-  const pdfResponse = await client.send("Page.printToPDF", printOptions);
+  const firstPdfBytes = await printToPdf(client, printOptions);
   await waitFor(client, "afterprint restoration", "Boolean(globalThis.__browserPrintEvidence && globalThis.__browserPrintEvidence.after)");
   const printEvidence = await evaluate(client, "globalThis.__browserPrintEvidence");
-  const firstPdf = normalizePdfMetadata(Buffer.from(pdfResponse.data, "base64"));
-  const secondPdf = normalizePdfMetadata(Buffer.from((await client.send("Page.printToPDF", printOptions)).data, "base64"));
+  const firstPdf = normalizePdfMetadata(firstPdfBytes);
+  const secondPdf = normalizePdfMetadata(await printToPdf(client, printOptions));
   const pdf = firstPdf.output;
   const pageCount = pdfPageCount(pdf);
   verify(evidence, screenRows === issuesFixture.template.issuePageSize, "print: screen view is paginated before Ctrl+P", { screenRows, pageSize: issuesFixture.template.issuePageSize });
@@ -759,8 +787,8 @@ async function exercisePortfolioPrintScopes(client, fixtures, evidence) {
     verify(evidence, printLayout.printMedia === true && printLayout.toolbarDisplay === "none" && printLayout.manifestDisplay !== "none", `${label}: print media hides controls and retains the manifest`, printLayout);
     verify(evidence, printLayout.registerRows === fixture.expectedSelected && printLayout.tableOverflow === "visible", `${label}: print media preserves every scoped row without clipped tables`, printLayout);
 
-    const firstPdf = normalizePdfMetadata(Buffer.from((await client.send("Page.printToPDF", printOptions)).data, "base64"));
-    const secondPdf = normalizePdfMetadata(Buffer.from((await client.send("Page.printToPDF", printOptions)).data, "base64"));
+    const firstPdf = normalizePdfMetadata(await printToPdf(client, printOptions));
+    const secondPdf = normalizePdfMetadata(await printToPdf(client, printOptions));
     const pdf = firstPdf.output;
     const pageCount = pdfPageCount(pdf);
     verify(evidence, pdf.subarray(0, 5).toString("ascii") === "%PDF-" && pageCount > 1, `${label}: Chrome produced a multi-page PDF`, { bytes: pdf.length, pageCount });
